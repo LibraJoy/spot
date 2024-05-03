@@ -1,0 +1,15 @@
+bosdyn-client==3.3.0
+bosdyn-mission==3.3.0
+bosdyn-choreography-client==3.3.0
+#opencv-contrib-python>=4.6.0.66
+opencv-python>=4.6.0.66
+pyqt5
+aiortc
+numpy
+Pillow
+requests
+scipy
+matplotlib
+pylsd-nova
+pyrender
+trimesh
