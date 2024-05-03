@@ -4,6 +4,11 @@
 -export BOSDYN_CLIENT_USERNAME=user
 -export BOSDYN_CLIENT_PASSWORD=scgau6g5w987
 ```
+## Install required package
+```
+cd src
+pip install -r requirements.txt
+```
 ## Connnect to spot
 ```
 cd ~/spot/src
