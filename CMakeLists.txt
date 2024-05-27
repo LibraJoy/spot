@@ -9,8 +9,16 @@ project(spot)
 ## is used, also find other catkin packages
 find_package(catkin REQUIRED COMPONENTS
   geometry_msgs
+  std_msgs
+  nav_msgs
+  sensor_msgs
+  cv_bridge
   rospy
 )
+
+find_package(OpenCV REQUIRED)
+
+catkin_python_setup()
 
 ## System dependencies are found with CMake's conventions
 # find_package(Boost REQUIRED COMPONENTS system)
@@ -104,7 +112,7 @@ find_package(catkin REQUIRED COMPONENTS
 catkin_package(
 #  INCLUDE_DIRS include
 #  LIBRARIES spot
-#  CATKIN_DEPENDS geometry_msgs rospy
+ CATKIN_DEPENDS rospy std_msgs sensor_msgs geometry_msgs cv_bridge nav_msgs
 #  DEPENDS system_lib
 )
 
@@ -155,6 +163,24 @@ include_directories(
 
 # all install targets should use catkin DESTINATION variables
 # See http://ros.org/doc/api/catkin/html/adv_user_guide/variables.html
+
+# ros nodes
+catkin_install_python(PROGRAMS
+  scripts/publisher.py
+  scripts/img_pub.py
+  scripts/subscriber.py
+  DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
+)
+
+# Install Python modules
+## Add Python path
+set(PYTHON_PATH ${CMAKE_CURRENT_SOURCE_DIR}/src/spot/src/spot)
+file(TO_CMAKE_PATH ${PYTHON_PATH} PYTHON_PATH)
+
+install(DIRECTORY src/spot/src/spot/
+  DESTINATION ${CATKIN_PACKAGE_PYTHON_DESTINATION}
+  FILES_MATCHING PATTERN "*.py"
+)
 
 ## Mark executable scripts (Python etc.) for installation
 ## in contrast to setup.py, you can choose the destination

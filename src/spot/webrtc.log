@@ -3335,3 +3335,69 @@ INFO:CerlabSpotSDK.192.168.80.3:Powering on robot... This may take several secon
 INFO:CerlabSpotSDK.192.168.80.3:Robot powered on.
 INFO:CerlabSpotSDK.192.168.80.3:Set robot to accept command...
 INFO:root:Lease check-in stopped
+INFO:rospy.topics:topicmanager initialized
+DEBUG:rospy.topics:tm._add: /spot_location, geometry_msgs/PoseStamped, pub
+DEBUG:rospy.topics:tm._add: /spot_odom, nav_msgs/Odometry, pub
+DEBUG:rospy.topics:tm._add: /spot_360cam_image, sensor_msgs/Image, pub
+INFO:rospy.topics:topicmanager initialized
+DEBUG:rospy.topics:tm._add: /spot_location, geometry_msgs/PoseStamped, pub
+DEBUG:rospy.topics:tm._add: /spot_odom, nav_msgs/Odometry, pub
+DEBUG:rospy.topics:tm._add: /spot_360cam_image, sensor_msgs/Image, pub
+INFO:rospy.topics:topicmanager initialized
+DEBUG:rospy.topics:tm._add: /spot_location, geometry_msgs/PoseStamped, pub
+DEBUG:rospy.topics:tm._add: /spot_odom, nav_msgs/Odometry, pub
+DEBUG:rospy.topics:tm._add: /spot_360cam_image, sensor_msgs/Image, pub
+INFO:rospy.topics:topicmanager initialized
+DEBUG:rospy.topics:tm._add: /spot_location, geometry_msgs/PoseStamped, pub
+DEBUG:rospy.topics:tm._add: /spot_odom, nav_msgs/Odometry, pub
+DEBUG:rospy.topics:tm._add: /spot_360cam_image, sensor_msgs/Image, pub
+INFO:rospy.topics:topicmanager initialized
+DEBUG:rospy.topics:tm._add: /spot_location, geometry_msgs/PoseStamped, pub
+DEBUG:rospy.topics:tm._add: /spot_odom, nav_msgs/Odometry, pub
+DEBUG:rospy.topics:tm._add: /spot_360cam_image, sensor_msgs/Image, pub
+INFO:rospy.topics:topicmanager initialized
+DEBUG:rospy.topics:tm._add: /spot_location, geometry_msgs/PoseStamped, pub
+DEBUG:rospy.topics:tm._add: /spot_odom, nav_msgs/Odometry, pub
+DEBUG:rospy.topics:tm._add: /spot_360cam_image, sensor_msgs/Image, pub
+INFO:rospy.topics:topicmanager initialized
+DEBUG:rospy.topics:tm._add: /spot_location, geometry_msgs/PoseStamped, pub
+DEBUG:rospy.topics:tm._add: /spot_odom, nav_msgs/Odometry, pub
+INFO:rospy.topics:topicmanager initialized
+DEBUG:rospy.topics:tm._add: /spot_360cam_image, sensor_msgs/Image, pub
+INFO:rospy.topics:topicmanager initialized
+DEBUG:rospy.topics:tm._add: /spot_360cam_image, sensor_msgs/Image, pub
+INFO:rospy.topics:topicmanager initialized
+INFO:rospy.topics:topicmanager initialized
+INFO:rospy.topics:topicmanager initialized
+INFO:rospy.topics:topicmanager initialized
+INFO:root:Starting lease check-in
+INFO:CerlabSpotSDK.192.168.80.3:Powering on robot... This may take several seconds.
+INFO:root:Lease check-in stopped
+ERROR:root:Hello, Spot! threw an exception: KeepaliveMotorsOffError()
+ERROR:root:Hello, Spot! threw an exception: ResourceAlreadyClaimedError()
+ERROR:root:Hello, Spot! threw an exception: ResourceAlreadyClaimedError()
+ERROR:root:Hello, Spot! threw an exception: ResourceAlreadyClaimedError()
+ERROR:root:Hello, Spot! threw an exception: ResourceAlreadyClaimedError()
+ERROR:root:Hello, Spot! threw an exception: ResourceAlreadyClaimedError()
+ERROR:root:Hello, Spot! threw an exception: ResourceAlreadyClaimedError()
+ERROR:root:Hello, Spot! threw an exception: ResourceAlreadyClaimedError()
+ERROR:root:Hello, Spot! threw an exception: ResourceAlreadyClaimedError()
+ERROR:root:Hello, Spot! threw an exception: ResourceAlreadyClaimedError()
+INFO:root:Starting lease check-in
+INFO:CerlabSpotSDK.192.168.80.3:Powering on robot... This may take several seconds.
+INFO:CerlabSpotSDK.192.168.80.3:Robot powered on.
+INFO:CerlabSpotSDK.192.168.80.3:Set robot to accept command...
+INFO:root:Lease check-in stopped
+INFO:root:Starting lease check-in
+INFO:CerlabSpotSDK.192.168.80.3:Powering on robot... This may take several seconds.
+INFO:CerlabSpotSDK.192.168.80.3:Robot powered on.
+INFO:CerlabSpotSDK.192.168.80.3:Set robot to accept command...
+INFO:root:Lease check-in stopped
+INFO:rospy.topics:topicmanager initialized
+INFO:rospy.topics:topicmanager initialized
+INFO:rospy.topics:topicmanager initialized
+INFO:rospy.topics:topicmanager initialized
+INFO:rospy.topics:topicmanager initialized
+ERROR:root:Hello, Spot! threw an exception: ProxyConnectionError()
+INFO:rospy.topics:topicmanager initialized
+INFO:rospy.topics:topicmanager initialized

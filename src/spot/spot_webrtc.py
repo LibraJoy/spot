@@ -18,7 +18,7 @@ import numpy as np
 import requests
 from aiortc import MediaStreamTrack, RTCConfiguration, RTCPeerConnection, RTCSessionDescription
 from aiortc.contrib.media import MediaRecorder
-from webrtc_client import WebRTCClient
+from spot.webrtc_client import WebRTCClient
 
 import bosdyn.client
 

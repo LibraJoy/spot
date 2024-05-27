@@ -1,0 +1,122 @@
+#!/usr/bin/env python
+import sys
+sys.path.append('/home/yqqy/spot_ws/src/spot/src')
+import spot.spot_spot as spot
+import spot.spot_webrtc as spot_webrtc
+from spot.webrtc_client import WebRTCClient
+from aiortc import RTCConfiguration
+import asyncio
+import cv2
+import time
+from sensor_msgs.msg import Image
+from cv_bridge import CvBridge, CvBridgeError
+
+import threading
+import multiprocessing as mp
+import rospy
+
+p = None
+webrtc_thread = None
+shutdown_flag = None
+bridge = CvBridge()
+
+def startMonitor(hostname, robot, process=spot_webrtc.captureT):
+  global webrtc_thread
+  global shutdown_flag
+  spot_webrtc.frameCount = 0
+  spot.set_screen('mech_full')  # PTZ camera
+  #spot.set_screen('digi_full')
+  # spot.set_screen('pano_full') # for searching window
+  #spot.set_screen('c0')
+#   spot.stand()
+  # Suppress all exceptions and log them instead.
+  #sys.stderr = InterceptStdErr()
+
+  spot_webrtc.frameCount = 0
+  # set up webrtc thread (capture only)
+  if webrtc_thread is None:
+    shutdown_flag = threading.Event()
+    webrtc_thread = threading.Thread(
+      target=spot_webrtc.start_webrtc, args=[shutdown_flag, hostname, robot.user_token, process],
+      daemon=True)
+
+  fc = 0
+
+  corners = []
+  # start webrtc thread
+  webrtc_thread.start()
+  while True:
+    #print(spot_webrtc.frameCount)
+    if not webrtc_thread.is_alive():
+      break
+    elif spot_webrtc.frameCount == 0:
+      time.sleep(0.1)
+      tm1 = time.time()
+    else:
+      img = spot_webrtc.cvImage.copy()
+      publish_image_to_ros(spot_webrtc.cvImage)
+      # end of else
+    c = cv2.waitKey(1)
+    if c == 27:
+      break
+
+def publish_image_to_ros(cv_img):
+  global bridge
+  try:
+    ros_img = bridge.cv2_to_imgmsg(cv_img, encoding="bgr8")
+    img_pub.publish(ros_img)
+  except CvBridgeError as e:
+    print(e)
+
+def endSpot():
+  global p
+  global webrtc_thread
+  if webrtc_thread is not None:
+    # stop webrtc capture thread        
+    shutdown_flag.set()
+    try:
+      webrtc_thread.join()
+      #print('Successfully saved webrtc images to local directory.')
+    except KeyboardInterrupt:
+      shutdown_flag.set()
+      webrtc_thread.join(timeout=3.0)
+
+  time.sleep(1.0)      
+#   spot.sit()
+
+  cv2.destroyAllWindows()
+  # close webRTC process
+  if p is not None:
+    p.terminate()
+    p.join()
+
+# main loop    
+def publish():
+  global p
+#   spot.stand()
+  # spot.set_screen('pano_full')
+  spot.set_screen('mech_full')
+
+  # webRTC showing (different process)
+  p = mp.Process(target = spot_webrtc.monitor, args=(spot.hostname, spot.robot))
+  p.start()
+
+  startMonitor(spot.hostname, spot.robot)
+
+
+if __name__ == '__main__':
+  rospy.init_node('img_publisher', anonymous=True)
+  img_pub = rospy.Publisher('spot_image', Image, queue_size=10)
+
+  while True:
+    if spot.connect():
+        print("success connected")
+        break
+
+  try:
+    publish()
+    time.sleep(1.0)
+    # endSpot()
+  except KeyboardInterrupt:
+    endSpot()
+    rospy.signal_shutdown('Keyboard interrupt')

@@ -24,8 +24,8 @@ from bosdyn import geometry
 from bosdyn.api import geometry_pb2, image_pb2, trajectory_pb2, world_object_pb2
 from bosdyn.api.spot import robot_command_pb2 as spot_command_pb2
 import bosdyn.api.basic_command_pb2 as basic_command_pb2
-from CameraService import CameraService
-import spot_webrtc
+from spot.CameraService import CameraService
+import spot.spot_webrtc
 # edit
 from bosdyn.client.graph_nav import GraphNavClient
 # edit
