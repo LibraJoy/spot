@@ -14,6 +14,8 @@ find_package(catkin REQUIRED COMPONENTS
   sensor_msgs
   cv_bridge
   rospy
+  vision_msgs
+  message_generation
 )
 
 find_package(OpenCV REQUIRED)
@@ -54,11 +56,10 @@ catkin_python_setup()
 ##   * add every package in MSG_DEP_SET to generate_messages(DEPENDENCIES ...)
 
 ## Generate messages in the 'msg' folder
-# add_message_files(
-#   FILES
-#   Message1.msg
-#   Message2.msg
-# )
+add_message_files(
+  FILES
+  SemanticLabel.msg
+)
 
 ## Generate services in the 'srv' folder
 # add_service_files(
@@ -75,10 +76,10 @@ catkin_python_setup()
 # )
 
 ## Generate added messages and services with any dependencies listed here
-# generate_messages(
-#   DEPENDENCIES
-#   geometry_msgs
-# )
+generate_messages(
+  DEPENDENCIES
+  std_msgs
+)
 
 ################################################
 ## Declare ROS dynamic reconfigure parameters ##
@@ -112,7 +113,7 @@ catkin_python_setup()
 catkin_package(
 #  INCLUDE_DIRS include
 #  LIBRARIES spot
- CATKIN_DEPENDS rospy std_msgs sensor_msgs geometry_msgs cv_bridge nav_msgs
+ CATKIN_DEPENDS rospy std_msgs sensor_msgs geometry_msgs cv_bridge nav_msgs vision_msgs message_runtime
 #  DEPENDS system_lib
 )
 
@@ -169,6 +170,7 @@ catkin_install_python(PROGRAMS
   scripts/publisher.py
   scripts/img_pub.py
   scripts/subscriber.py
+  scripts/yolo_res_pub.py
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
 

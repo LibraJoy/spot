@@ -8,12 +8,11 @@ from aiortc import RTCConfiguration
 import asyncio
 import cv2
 import time
+import rospy
 from sensor_msgs.msg import Image
 from cv_bridge import CvBridge, CvBridgeError
 
 import threading
-import multiprocessing as mp
-import rospy
 
 p = None
 webrtc_thread = None
@@ -24,15 +23,17 @@ def startMonitor(hostname, robot, process=spot_webrtc.captureT):
   global webrtc_thread
   global shutdown_flag
   spot_webrtc.frameCount = 0
-  spot.set_screen('mech_full')  # PTZ camera
+  spot_webrtc.frameR = None
+  # spot.set_screen('mech_full')  # PTZ camera
   #spot.set_screen('digi_full')
-  # spot.set_screen('pano_full') # for searching window
+  spot.set_screen('pano_full') # for searching window
   #spot.set_screen('c0')
 #   spot.stand()
   # Suppress all exceptions and log them instead.
   #sys.stderr = InterceptStdErr()
 
   spot_webrtc.frameCount = 0
+  spot_webrtc.frameR = None
   # set up webrtc thread (capture only)
   if webrtc_thread is None:
     shutdown_flag = threading.Event()
@@ -52,6 +53,9 @@ def startMonitor(hostname, robot, process=spot_webrtc.captureT):
     elif spot_webrtc.frameCount == 0:
       time.sleep(0.1)
       tm1 = time.time()
+      print("-------------------------- frame count = 0 ----------------------")
+      if spot_webrtc.frameR is None:
+        print("-------------------- NO FRAME RECEIVED FROM QUEUE --------------------")
     else:
       img = spot_webrtc.cvImage.copy()
       publish_image_to_ros(spot_webrtc.cvImage)
@@ -94,12 +98,8 @@ def endSpot():
 def publish():
   global p
 #   spot.stand()
-  # spot.set_screen('pano_full')
-  spot.set_screen('mech_full')
-
-  # webRTC showing (different process)
-  p = mp.Process(target = spot_webrtc.monitor, args=(spot.hostname, spot.robot))
-  p.start()
+  spot.set_screen('pano_full')
+  # spot.set_screen('mech_full')
 
   startMonitor(spot.hostname, spot.robot)
 
@@ -110,13 +110,12 @@ if __name__ == '__main__':
 
   while True:
     if spot.connect():
-        print("success connected")
+        print("spot connected")
         break
 
   try:
     publish()
     time.sleep(1.0)
-    # endSpot()
   except KeyboardInterrupt:
     endSpot()
     rospy.signal_shutdown('Keyboard interrupt')

@@ -30,6 +30,8 @@ STDERR = logging.getLogger('stderr')
 
 frameCount = 0
 cvImage = None
+frameR = None
+rgbImage = None
 
 class InterceptStdErr:
     """Intercept all exceptions and print them to StdErr without interrupting."""
@@ -102,14 +104,19 @@ async def monitorT(client, shutdown_flag, save=False):
 async def captureT(client, shutdown_flag):
     global frameCount
     global cvImage
+    global frameR
+    global rgbImage
     frameCount = 0
+    frameR = None
     while asyncio.get_event_loop().is_running():
         #print(count)
         try:
             frame = await client.video_frame_queue.get()
-
+            frameR = frame
+            # frameCount += 1
             pil_image = frame.to_image()
             mat = np.array(pil_image)
+            rgbImage = mat.copy()
             # OpenCV needs BGR
             cvImage = cv2.cvtColor(mat, cv2.COLOR_RGB2BGR)
             #cv2.imshow('display', cvImage)

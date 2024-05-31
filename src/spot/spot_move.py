@@ -1,5 +1,5 @@
-import spot_spot as spot
-import spot_webrtc
+import spot.spot_spot as spot
+import spot.spot_webrtc as spot_webrtc
 import cv2
 import time
 
@@ -23,6 +23,7 @@ def startMonitor(hostname, robot, process=spot_webrtc.captureT, movement = actio
   global webrtc_thread
   global shutdown_flag
   spot_webrtc.frameCount = 0
+  spot_webrtc.frameR = None
   spot.set_screen('mech_full')  # PTZ camera
   #spot.set_screen('digi_full')
   #spot.set_screen('pano_full') # for searching window
@@ -52,6 +53,9 @@ def startMonitor(hostname, robot, process=spot_webrtc.captureT, movement = actio
     elif spot_webrtc.frameCount == 0:
       time.sleep(0.1)
       tm1 = time.time()
+      print("-------------------------- frame count = 0 ----------------------")
+      if spot_webrtc.frameR is None:
+        print("-------------------- NO FRAME RECEIVED FROM QUEUE --------------------")
     else:
       movement()
       done = True
