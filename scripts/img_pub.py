@@ -1,6 +1,4 @@
-#!/usr/bin/env python
-import sys
-sys.path.append('/home/yqqy/spot_ws/src/spot/src')
+#!/usr/bin/env python3
 import spot.spot_spot as spot
 import spot.spot_webrtc as spot_webrtc
 from spot.webrtc_client import WebRTCClient
@@ -18,6 +16,9 @@ p = None
 webrtc_thread = None
 shutdown_flag = None
 bridge = CvBridge()
+
+# tgtdir = 'images/' + time.strftime('%Y-%m-%d-%H-%M-%S')
+# os.makedirs(tgtdir, exist_ok=True)
 
 def startMonitor(hostname, robot, process=spot_webrtc.captureT):
   global webrtc_thread
@@ -41,12 +42,11 @@ def startMonitor(hostname, robot, process=spot_webrtc.captureT):
       target=spot_webrtc.start_webrtc, args=[shutdown_flag, hostname, robot.user_token, process],
       daemon=True)
 
-  fc = 0
-
-  corners = []
   # start webrtc thread
   webrtc_thread.start()
-  while True:
+
+  rate = rospy.Rate(20)
+  while not rospy.is_shutdown():
     #print(spot_webrtc.frameCount)
     if not webrtc_thread.is_alive():
       break
@@ -58,8 +58,16 @@ def startMonitor(hostname, robot, process=spot_webrtc.captureT):
         print("-------------------- NO FRAME RECEIVED FROM QUEUE --------------------")
     else:
       img = spot_webrtc.cvImage.copy()
-      publish_image_to_ros(spot_webrtc.cvImage)
+      # cv2.imshow("Image", img)
+      publish_image_to_ros(img)
+
+      # for i in range(6):
+      #   time.sleep(0.1)
+      #   cv2.imwrite(tgtdir + '/{:02d}.jpg'.format(i), img)
+      #   print('image saved')
       # end of else
+    rate.sleep()
+
     c = cv2.waitKey(1)
     if c == 27:
       break
@@ -105,13 +113,16 @@ def publish():
 
 
 if __name__ == '__main__':
-  rospy.init_node('img_publisher', anonymous=True)
-  img_pub = rospy.Publisher('spot_image', Image, queue_size=10)
 
   while True:
     if spot.connect():
         print("spot connected")
         break
+    else:
+      print("connnection failed")
+
+  rospy.init_node('img_publisher', anonymous=True)
+  img_pub = rospy.Publisher('spot_image', Image, queue_size=10)
 
   try:
     publish()

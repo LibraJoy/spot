@@ -171,6 +171,7 @@ catkin_install_python(PROGRAMS
   scripts/img_pub.py
   scripts/subscriber.py
   scripts/yolo_res_pub.py
+  scripts/uav_yolo_res_pub.py
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
 

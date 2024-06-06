@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 import spot.spot_spot as spot
 import spot.spot_webrtc as spot_webrtc
 import spot.spot_move as spot_move
@@ -78,7 +79,7 @@ def action():
     raw_img = spot_webrtc.cvImage.copy()
 
     # publish_image_to_ros(raw_img)
-    # publish_yolo_img_to_ros(img)
+    publish_yolo_img_to_ros(img)
     publish_bbox(box, cat, conf)
     publish_sem_label(model, cat)
 
@@ -144,7 +145,7 @@ def publish_sem_label(model, cat):
 
 
 if __name__ == '__main__':
-  img_pub = rospy.Publisher('spot_image', Image, queue_size=10)
+  # img_pub = rospy.Publisher('spot_image', Image, queue_size=10)
   yolo_img_pub = rospy.Publisher('yolo_image', Image, queue_size=10)
   bbox_pub = rospy.Publisher('yolo_bbox', Detection2DArray, queue_size=10)
   label_pub = rospy.Publisher('yolo_label', SemanticLabel, queue_size=10)

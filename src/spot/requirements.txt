@@ -1,8 +1,9 @@
-bosdyn-client==3.3.0
-bosdyn-mission==3.3.0
-bosdyn-choreography-client==3.3.0
+bosdyn-client==4.0.1
+bosdyn-mission==4.0.1
+bosdyn-choreography-client==4.0.1
+# I prefer conda (qt backbone)
 #opencv-contrib-python>=4.6.0.66
-opencv-python>=4.6.0.66
+#opencv-python>=4.6.0.66
 pyqt5
 aiortc
 numpy
@@ -13,3 +14,18 @@ matplotlib
 pylsd-nova
 pyrender
 trimesh
+
+# pytorch
+# GPU version (default)
+#--find-links https://download.pytorch.org/whl/cu121
+# CPU version
+#--find-links https://download.pytorch.org/whl/cpu
+torch
+torchvision
+torchaudio
+
+# yolo v7
+yolov7detect
+
+# SAM
+git+https://github.com/facebookresearch/segment-anything.git
