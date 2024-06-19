@@ -7,6 +7,7 @@ project(spot)
 ## Find catkin macros and libraries
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
+find_package(PCL REQUIRED COMPONENTS common)
 find_package(catkin REQUIRED COMPONENTS
   geometry_msgs
   std_msgs
@@ -16,6 +17,7 @@ find_package(catkin REQUIRED COMPONENTS
   rospy
   vision_msgs
   message_generation
+  pcl_conversions
 )
 
 find_package(OpenCV REQUIRED)
@@ -113,7 +115,7 @@ generate_messages(
 catkin_package(
 #  INCLUDE_DIRS include
 #  LIBRARIES spot
- CATKIN_DEPENDS rospy std_msgs sensor_msgs geometry_msgs cv_bridge nav_msgs vision_msgs message_runtime
+ CATKIN_DEPENDS rospy std_msgs sensor_msgs geometry_msgs cv_bridge nav_msgs vision_msgs message_runtime pcl_conversions
 #  DEPENDS system_lib
 )
 
@@ -172,6 +174,7 @@ catkin_install_python(PROGRAMS
   scripts/subscriber.py
   scripts/yolo_res_pub.py
   scripts/uav_yolo_res_pub.py
+  scripts/repub_lidar_debug.py
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
 

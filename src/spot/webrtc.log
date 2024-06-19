@@ -3401,3 +3401,603 @@ INFO:rospy.topics:topicmanager initialized
 ERROR:root:Hello, Spot! threw an exception: ProxyConnectionError()
 INFO:rospy.topics:topicmanager initialized
 INFO:rospy.topics:topicmanager initialized
+INFO:numexpr.utils:Note: NumExpr detected 12 cores but "NUMEXPR_MAX_THREADS" not set, so enforcing safe limit of 8.
+INFO:numexpr.utils:NumExpr defaulting to 8 threads.
+DEBUG:matplotlib:matplotlib data path: /home/cerlab/.local/lib/python3.8/site-packages/matplotlib/mpl-data
+DEBUG:matplotlib:CONFIGDIR=/home/cerlab/.config/matplotlib
+DEBUG:matplotlib:interactive is False
+DEBUG:matplotlib:platform is linux
+DEBUG:matplotlib:CACHEDIR=/home/cerlab/.cache/matplotlib
+DEBUG:matplotlib.font_manager:Using fontManager instance from /home/cerlab/.cache/matplotlib/fontlist-v330.json
+DEBUG:matplotlib.pyplot:Loaded backend agg version v2.2.
+INFO:rospy.topics:topicmanager initialized
+INFO:rospy.core:signal_shutdown [atexit]
+INFO:numexpr.utils:Note: NumExpr detected 12 cores but "NUMEXPR_MAX_THREADS" not set, so enforcing safe limit of 8.
+INFO:numexpr.utils:NumExpr defaulting to 8 threads.
+DEBUG:matplotlib:matplotlib data path: /home/cerlab/.local/lib/python3.8/site-packages/matplotlib/mpl-data
+DEBUG:matplotlib:CONFIGDIR=/home/cerlab/.config/matplotlib
+DEBUG:matplotlib:interactive is False
+DEBUG:matplotlib:platform is linux
+DEBUG:matplotlib:CACHEDIR=/home/cerlab/.cache/matplotlib
+DEBUG:matplotlib.font_manager:Using fontManager instance from /home/cerlab/.cache/matplotlib/fontlist-v330.json
+DEBUG:matplotlib.pyplot:Loaded backend agg version v2.2.
+INFO:rospy.topics:topicmanager initialized
+ERROR:root:Hello, Spot! threw an exception: ProxyConnectionError()
+ERROR:root:Hello, Spot! threw an exception: ProxyConnectionError()
+ERROR:root:Hello, Spot! threw an exception: ProxyConnectionError()
+ERROR:root:Hello, Spot! threw an exception: ProxyConnectionError()
+ERROR:root:Hello, Spot! threw an exception: ProxyConnectionError()
+ERROR:root:Hello, Spot! threw an exception: ProxyConnectionError()
+ERROR:root:Hello, Spot! threw an exception: ProxyConnectionError()
+ERROR:root:Hello, Spot! threw an exception: ProxyConnectionError()
+ERROR:root:Hello, Spot! threw an exception: ProxyConnectionError()
+ERROR:root:Hello, Spot! threw an exception: ProxyConnectionError()
+ERROR:root:Hello, Spot! threw an exception: ProxyConnectionError()
+ERROR:root:Hello, Spot! threw an exception: ProxyConnectionError()
+ERROR:root:Hello, Spot! threw an exception: ProxyConnectionError()
+ERROR:root:Hello, Spot! threw an exception: ProxyConnectionError()
+ERROR:root:Hello, Spot! threw an exception: ProxyConnectionError()
+ERROR:root:Hello, Spot! threw an exception: ProxyConnectionError()
+ERROR:root:Hello, Spot! threw an exception: ProxyConnectionError()
+ERROR:root:Hello, Spot! threw an exception: ProxyConnectionError()
+ERROR:root:Hello, Spot! threw an exception: ProxyConnectionError()
+ERROR:root:Hello, Spot! threw an exception: ProxyConnectionError()
+ERROR:root:Hello, Spot! threw an exception: ProxyConnectionError()
+ERROR:root:Hello, Spot! threw an exception: ProxyConnectionError()
+ERROR:root:Hello, Spot! threw an exception: ProxyConnectionError()
+ERROR:root:Hello, Spot! threw an exception: ProxyConnectionError()
+ERROR:root:Hello, Spot! threw an exception: ProxyConnectionError()
+ERROR:root:Hello, Spot! threw an exception: ProxyConnectionError()
+ERROR:root:Hello, Spot! threw an exception: ProxyConnectionError()
+INFO:rospy.core:signal_shutdown [atexit]
+INFO:numexpr.utils:Note: NumExpr detected 12 cores but "NUMEXPR_MAX_THREADS" not set, so enforcing safe limit of 8.
+INFO:numexpr.utils:NumExpr defaulting to 8 threads.
+DEBUG:matplotlib:matplotlib data path: /home/cerlab/.local/lib/python3.8/site-packages/matplotlib/mpl-data
+DEBUG:matplotlib:CONFIGDIR=/home/cerlab/.config/matplotlib
+DEBUG:matplotlib:interactive is False
+DEBUG:matplotlib:platform is linux
+DEBUG:matplotlib:CACHEDIR=/home/cerlab/.cache/matplotlib
+DEBUG:matplotlib.font_manager:Using fontManager instance from /home/cerlab/.cache/matplotlib/fontlist-v330.json
+DEBUG:matplotlib.pyplot:Loaded backend agg version v2.2.
+INFO:rospy.topics:topicmanager initialized
+ERROR:root:Hello, Spot! threw an exception: UnableToConnectToRobotError()
+INFO:rospy.core:signal_shutdown [atexit]
+ERROR:root:Hello, Spot! threw an exception: ProxyConnectionError()
+ERROR:root:Hello, Spot! threw an exception: ProxyConnectionError()
+INFO:root:Starting lease check-in
+INFO:CerlabSpotSDK.192.168.50.3:Powering on robot... This may take several seconds.
+INFO:CerlabSpotSDK.192.168.50.3:Robot powered on.
+INFO:CerlabSpotSDK.192.168.50.3:Commanding robot to stand...
+ERROR:root:Hello, Spot! threw an exception: AttributeError("'NoneType' object has no attribute 'robot_command'")
+INFO:CerlabSpotSDK.192.168.50.3:Robot standing.
+INFO:CerlabSpotSDK.192.168.50.3:Robot standing twisted.
+INFO:CerlabSpotSDK.192.168.50.3:Added comment "HelloSpot tutorial user comment." to robot log.
+INFO:CerlabSpotSDK.192.168.50.3:Robot safely powered off.
+INFO:root:Lease check-in stopped
+INFO:root:Starting lease check-in
+INFO:CerlabSpotSDK.192.168.50.3:Powering on robot... This may take several seconds.
+INFO:CerlabSpotSDK.192.168.50.3:Robot powered on.
+INFO:CerlabSpotSDK.192.168.50.3:Commanding robot to stand...
+INFO:root:Lease check-in stopped
+INFO:root:Starting lease check-in
+INFO:CerlabSpotSDK.192.168.50.3:Powering on robot... This may take several seconds.
+INFO:CerlabSpotSDK.192.168.50.3:Robot powered on.
+INFO:CerlabSpotSDK.192.168.50.3:Commanding robot to stand...
+INFO:root:Lease check-in stopped
+INFO:root:Starting lease check-in
+INFO:CerlabSpotSDK.192.168.50.3:Powering on robot... This may take several seconds.
+WARNING:root:Generic exception for  during check-in:
+bosdyn.api.RetainLeaseResponse (LeaseUseError): 
+    (resuming check-in)
+INFO:CerlabSpotSDK.192.168.50.3:Robot powered on.
+INFO:CerlabSpotSDK.192.168.50.3:Commanding robot to stand...
+INFO:root:Lease check-in stopped
+INFO:root:Starting lease check-in
+INFO:CerlabSpotSDK.192.168.50.3:Powering on robot... This may take several seconds.
+INFO:CerlabSpotSDK.192.168.50.3:Robot powered on.
+INFO:CerlabSpotSDK.192.168.50.3:Commanding robot to stand...
+INFO:root:Lease check-in stopped
+INFO:root:Starting lease check-in
+INFO:CerlabSpotSDK.192.168.50.3:Powering on robot... This may take several seconds.
+INFO:CerlabSpotSDK.192.168.50.3:Robot powered on.
+INFO:CerlabSpotSDK.192.168.50.3:Commanding robot to stand...
+INFO:root:Lease check-in stopped
+INFO:root:Starting lease check-in
+INFO:CerlabSpotSDK.192.168.50.3:Powering on robot... This may take several seconds.
+INFO:root:Lease check-in stopped
+INFO:root:Starting lease check-in
+INFO:CerlabSpotSDK.192.168.50.3:Powering on robot... This may take several seconds.
+INFO:CerlabSpotSDK.192.168.50.3:Robot powered on.
+INFO:CerlabSpotSDK.192.168.50.3:Commanding robot to stand...
+INFO:root:Lease check-in stopped
+INFO:root:Starting lease check-in
+INFO:CerlabSpotSDK.192.168.50.3:Powering on robot... This may take several seconds.
+INFO:CerlabSpotSDK.192.168.50.3:Robot powered on.
+INFO:CerlabSpotSDK.192.168.50.3:Commanding robot to stand...
+INFO:root:Lease check-in stopped
+INFO:root:Starting lease check-in
+INFO:CerlabSpotSDK.192.168.50.3:Powering on robot... This may take several seconds.
+INFO:CerlabSpotSDK.192.168.50.3:Robot powered on.
+INFO:CerlabSpotSDK.192.168.50.3:Commanding robot to stand...
+INFO:root:Lease check-in stopped
+INFO:root:Starting lease check-in
+INFO:CerlabSpotSDK.192.168.50.3:Powering on robot... This may take several seconds.
+INFO:CerlabSpotSDK.192.168.50.3:Robot powered on.
+INFO:CerlabSpotSDK.192.168.50.3:Commanding robot to stand...
+INFO:root:Lease check-in stopped
+INFO:root:Starting lease check-in
+INFO:CerlabSpotSDK.192.168.50.3:Powering on robot... This may take several seconds.
+INFO:root:Lease check-in stopped
+INFO:root:Starting lease check-in
+INFO:CerlabSpotSDK.192.168.50.3:Powering on robot... This may take several seconds.
+INFO:CerlabSpotSDK.192.168.50.3:Robot powered on.
+INFO:CerlabSpotSDK.192.168.50.3:Commanding robot to stand...
+INFO:root:Lease check-in stopped
+ERROR:root:Hello, Spot! threw an exception: AttributeError("'NoneType' object has no attribute 'robot_command'")
+INFO:root:Starting lease check-in
+INFO:CerlabSpotSDK.192.168.50.3:Powering on robot... This may take several seconds.
+WARNING:root:Generic exception for  during check-in:
+bosdyn.api.RetainLeaseResponse (LeaseUseError): 
+    (resuming check-in)
+INFO:CerlabSpotSDK.192.168.50.3:Robot powered on.
+INFO:CerlabSpotSDK.192.168.50.3:Commanding robot to stand...
+INFO:root:Lease check-in stopped
+INFO:root:Starting lease check-in
+INFO:CerlabSpotSDK.192.168.50.3:Powering on robot... This may take several seconds.
+INFO:CerlabSpotSDK.192.168.50.3:Robot powered on.
+INFO:CerlabSpotSDK.192.168.50.3:Commanding robot to stand...
+INFO:root:Lease check-in stopped
+INFO:root:Starting lease check-in
+INFO:CerlabSpotSDK.192.168.50.3:Powering on robot... This may take several seconds.
+INFO:CerlabSpotSDK.192.168.50.3:Robot powered on.
+INFO:CerlabSpotSDK.192.168.50.3:Commanding robot to stand...
+INFO:root:Lease check-in stopped
+INFO:root:Starting lease check-in
+INFO:CerlabSpotSDK.192.168.50.3:Powering on robot... This may take several seconds.
+INFO:CerlabSpotSDK.192.168.50.3:Robot powered on.
+INFO:CerlabSpotSDK.192.168.50.3:Commanding robot to stand...
+INFO:root:Lease check-in stopped
+INFO:root:Starting lease check-in
+INFO:CerlabSpotSDK.192.168.50.3:Powering on robot... This may take several seconds.
+INFO:CerlabSpotSDK.192.168.50.3:Robot powered on.
+INFO:CerlabSpotSDK.192.168.50.3:Commanding robot to stand...
+INFO:root:Lease check-in stopped
+INFO:root:Starting lease check-in
+INFO:CerlabSpotSDK.192.168.50.3:Powering on robot... This may take several seconds.
+INFO:CerlabSpotSDK.192.168.50.3:Robot powered on.
+INFO:CerlabSpotSDK.192.168.50.3:Commanding robot to stand...
+INFO:root:Lease check-in stopped
+INFO:root:Starting lease check-in
+INFO:CerlabSpotSDK.192.168.50.3:Powering on robot... This may take several seconds.
+INFO:CerlabSpotSDK.192.168.50.3:Robot powered on.
+INFO:CerlabSpotSDK.192.168.50.3:Commanding robot to stand...
+INFO:root:Lease check-in stopped
+INFO:root:Starting lease check-in
+INFO:CerlabSpotSDK.192.168.50.3:Powering on robot... This may take several seconds.
+INFO:CerlabSpotSDK.192.168.50.3:Robot powered on.
+INFO:CerlabSpotSDK.192.168.50.3:Commanding robot to stand...
+INFO:root:Lease check-in stopped
+INFO:root:Starting lease check-in
+INFO:CerlabSpotSDK.192.168.50.3:Powering on robot... This may take several seconds.
+INFO:CerlabSpotSDK.192.168.50.3:Robot powered on.
+INFO:CerlabSpotSDK.192.168.50.3:Commanding robot to stand...
+INFO:root:Lease check-in stopped
+INFO:root:Starting lease check-in
+INFO:CerlabSpotSDK.192.168.50.3:Powering on robot... This may take several seconds.
+INFO:CerlabSpotSDK.192.168.50.3:Robot powered on.
+INFO:CerlabSpotSDK.192.168.50.3:Commanding robot to stand...
+INFO:root:Lease check-in stopped
+INFO:root:Starting lease check-in
+INFO:CerlabSpotSDK.192.168.50.3:Powering on robot... This may take several seconds.
+INFO:CerlabSpotSDK.192.168.50.3:Robot powered on.
+INFO:CerlabSpotSDK.192.168.50.3:Commanding robot to stand...
+INFO:root:Lease check-in stopped
+INFO:root:Starting lease check-in
+INFO:CerlabSpotSDK.192.168.50.3:Powering on robot... This may take several seconds.
+INFO:CerlabSpotSDK.192.168.50.3:Robot powered on.
+INFO:CerlabSpotSDK.192.168.50.3:Commanding robot to stand...
+INFO:root:Lease check-in stopped
+INFO:root:Starting lease check-in
+INFO:CerlabSpotSDK.192.168.50.3:Powering on robot... This may take several seconds.
+INFO:CerlabSpotSDK.192.168.50.3:Robot powered on.
+INFO:CerlabSpotSDK.192.168.50.3:Commanding robot to stand...
+INFO:root:Lease check-in stopped
+INFO:root:Starting lease check-in
+INFO:CerlabSpotSDK.192.168.50.3:Powering on robot... This may take several seconds.
+INFO:CerlabSpotSDK.192.168.50.3:Robot powered on.
+INFO:CerlabSpotSDK.192.168.50.3:Commanding robot to stand...
+INFO:root:Lease check-in stopped
+INFO:root:Starting lease check-in
+INFO:CerlabSpotSDK.192.168.50.3:Powering on robot... This may take several seconds.
+WARNING:root:Generic exception for  during check-in:
+bosdyn.api.RetainLeaseResponse (LeaseUseError): 
+    (resuming check-in)
+INFO:CerlabSpotSDK.192.168.50.3:Robot powered on.
+INFO:CerlabSpotSDK.192.168.50.3:Commanding robot to stand...
+INFO:root:Lease check-in stopped
+INFO:root:Starting lease check-in
+INFO:CerlabSpotSDK.192.168.50.3:Powering on robot... This may take several seconds.
+INFO:CerlabSpotSDK.192.168.50.3:Robot powered on.
+INFO:CerlabSpotSDK.192.168.50.3:Commanding robot to stand...
+INFO:root:Lease check-in stopped
+INFO:root:Starting lease check-in
+INFO:CerlabSpotSDK.192.168.50.3:Powering on robot... This may take several seconds.
+INFO:CerlabSpotSDK.192.168.50.3:Robot powered on.
+INFO:CerlabSpotSDK.192.168.50.3:Commanding robot to stand...
+INFO:root:Lease check-in stopped
+INFO:root:Starting lease check-in
+INFO:CerlabSpotSDK.192.168.50.3:Powering on robot... This may take several seconds.
+INFO:CerlabSpotSDK.192.168.50.3:Robot powered on.
+INFO:CerlabSpotSDK.192.168.50.3:Commanding robot to stand...
+INFO:root:Lease check-in stopped
+INFO:root:Starting lease check-in
+INFO:CerlabSpotSDK.192.168.50.3:Powering on robot... This may take several seconds.
+INFO:CerlabSpotSDK.192.168.50.3:Robot powered on.
+INFO:CerlabSpotSDK.192.168.50.3:Commanding robot to stand...
+INFO:root:Lease check-in stopped
+INFO:root:Starting lease check-in
+INFO:CerlabSpotSDK.192.168.50.3:Powering on robot... This may take several seconds.
+INFO:CerlabSpotSDK.192.168.50.3:Robot powered on.
+INFO:CerlabSpotSDK.192.168.50.3:Commanding robot to stand...
+INFO:root:Lease check-in stopped
+INFO:root:Starting lease check-in
+INFO:CerlabSpotSDK.192.168.50.3:Powering on robot... This may take several seconds.
+INFO:CerlabSpotSDK.192.168.50.3:Robot powered on.
+INFO:CerlabSpotSDK.192.168.50.3:Commanding robot to stand...
+INFO:root:Lease check-in stopped
+INFO:root:Starting lease check-in
+INFO:CerlabSpotSDK.192.168.50.3:Powering on robot... This may take several seconds.
+WARNING:root:Generic exception for  during check-in:
+bosdyn.api.RetainLeaseResponse (LeaseUseError): 
+    (resuming check-in)
+INFO:CerlabSpotSDK.192.168.50.3:Robot powered on.
+INFO:CerlabSpotSDK.192.168.50.3:Commanding robot to stand...
+INFO:root:Lease check-in stopped
+INFO:root:Starting lease check-in
+INFO:CerlabSpotSDK.192.168.50.3:Powering on robot... This may take several seconds.
+INFO:CerlabSpotSDK.192.168.50.3:Robot powered on.
+INFO:CerlabSpotSDK.192.168.50.3:Commanding robot to stand...
+INFO:root:Lease check-in stopped
+INFO:root:Starting lease check-in
+INFO:CerlabSpotSDK.192.168.50.3:Powering on robot... This may take several seconds.
+INFO:root:Lease check-in stopped
+INFO:root:Starting lease check-in
+INFO:CerlabSpotSDK.192.168.50.3:Powering on robot... This may take several seconds.
+INFO:CerlabSpotSDK.192.168.50.3:Robot powered on.
+INFO:CerlabSpotSDK.192.168.50.3:Commanding robot to stand...
+INFO:root:Lease check-in stopped
+INFO:root:Starting lease check-in
+INFO:CerlabSpotSDK.192.168.50.3:Powering on robot... This may take several seconds.
+INFO:CerlabSpotSDK.192.168.50.3:Robot powered on.
+INFO:CerlabSpotSDK.192.168.50.3:Commanding robot to stand...
+INFO:root:Lease check-in stopped
+INFO:root:Starting lease check-in
+INFO:CerlabSpotSDK.192.168.50.3:Powering on robot... This may take several seconds.
+INFO:CerlabSpotSDK.192.168.50.3:Robot powered on.
+INFO:CerlabSpotSDK.192.168.50.3:Commanding robot to stand...
+INFO:root:Lease check-in stopped
+INFO:root:Starting lease check-in
+INFO:CerlabSpotSDK.192.168.50.3:Powering on robot... This may take several seconds.
+INFO:CerlabSpotSDK.192.168.50.3:Robot powered on.
+INFO:CerlabSpotSDK.192.168.50.3:Commanding robot to stand...
+INFO:root:Lease check-in stopped
+INFO:root:Starting lease check-in
+INFO:CerlabSpotSDK.192.168.50.3:Powering on robot... This may take several seconds.
+INFO:CerlabSpotSDK.192.168.50.3:Robot powered on.
+INFO:CerlabSpotSDK.192.168.50.3:Commanding robot to stand...
+INFO:root:Lease check-in stopped
+INFO:root:Starting lease check-in
+INFO:CerlabSpotSDK.192.168.50.3:Powering on robot... This may take several seconds.
+INFO:CerlabSpotSDK.192.168.50.3:Robot powered on.
+INFO:CerlabSpotSDK.192.168.50.3:Commanding robot to stand...
+INFO:root:Lease check-in stopped
+INFO:root:Starting lease check-in
+INFO:CerlabSpotSDK.192.168.50.3:Powering on robot... This may take several seconds.
+INFO:CerlabSpotSDK.192.168.50.3:Robot powered on.
+INFO:CerlabSpotSDK.192.168.50.3:Commanding robot to stand...
+INFO:root:Lease check-in stopped
+INFO:root:Starting lease check-in
+INFO:CerlabSpotSDK.192.168.50.3:Powering on robot... This may take several seconds.
+INFO:CerlabSpotSDK.192.168.50.3:Robot powered on.
+INFO:CerlabSpotSDK.192.168.50.3:Commanding robot to stand...
+INFO:root:Lease check-in stopped
+INFO:root:Starting lease check-in
+INFO:CerlabSpotSDK.192.168.50.3:Powering on robot... This may take several seconds.
+INFO:root:Lease check-in stopped
+INFO:root:Starting lease check-in
+INFO:CerlabSpotSDK.192.168.50.3:Powering on robot... This may take several seconds.
+INFO:CerlabSpotSDK.192.168.50.3:Robot powered on.
+INFO:CerlabSpotSDK.192.168.50.3:Set robot to accept command...
+INFO:root:Lease check-in stopped
+INFO:root:Starting lease check-in
+INFO:CerlabSpotSDK.192.168.50.3:Powering on robot... This may take several seconds.
+INFO:CerlabSpotSDK.192.168.50.3:Robot powered on.
+INFO:CerlabSpotSDK.192.168.50.3:Commanding robot to stand...
+INFO:root:Lease check-in stopped
+ERROR:root:Hello, Spot! threw an exception: AttributeError("'NoneType' object has no attribute 'robot_command'")
+ERROR:root:Hello, Spot! threw an exception: AttributeError("'NoneType' object has no attribute 'robot_command'")
+INFO:root:Starting lease check-in
+INFO:CerlabSpotSDK.192.168.50.3:Powering on robot... This may take several seconds.
+INFO:CerlabSpotSDK.192.168.50.3:Robot powered on.
+INFO:CerlabSpotSDK.192.168.50.3:Set robot to accept command...
+INFO:root:Lease check-in stopped
+ERROR:root:Hello, Spot! threw an exception: ResourceAlreadyClaimedError()
+ERROR:root:Hello, Spot! threw an exception: AttributeError("'NoneType' object has no attribute 'robot_command'")
+ERROR:root:Hello, Spot! threw an exception: AttributeError("'NoneType' object has no attribute 'robot_command'")
+INFO:root:Starting lease check-in
+INFO:CerlabSpotSDK.192.168.50.3:Powering on robot... This may take several seconds.
+INFO:CerlabSpotSDK.192.168.50.3:Robot powered on.
+INFO:CerlabSpotSDK.192.168.50.3:Set robot to accept command...
+INFO:root:Lease check-in stopped
+ERROR:root:Hello, Spot! threw an exception: ResourceAlreadyClaimedError()
+ERROR:root:Hello, Spot! threw an exception: ResourceAlreadyClaimedError()
+ERROR:root:Hello, Spot! threw an exception: ResourceAlreadyClaimedError()
+ERROR:root:Hello, Spot! threw an exception: ResourceAlreadyClaimedError()
+ERROR:root:Hello, Spot! threw an exception: ResourceAlreadyClaimedError()
+ERROR:root:Hello, Spot! threw an exception: ResourceAlreadyClaimedError()
+ERROR:root:Hello, Spot! threw an exception: ResourceAlreadyClaimedError()
+ERROR:root:Hello, Spot! threw an exception: ResourceAlreadyClaimedError()
+ERROR:root:Hello, Spot! threw an exception: ResourceAlreadyClaimedError()
+ERROR:root:Hello, Spot! threw an exception: ResourceAlreadyClaimedError()
+ERROR:root:Hello, Spot! threw an exception: ResourceAlreadyClaimedError()
+ERROR:root:Hello, Spot! threw an exception: ResourceAlreadyClaimedError()
+ERROR:root:Hello, Spot! threw an exception: ResourceAlreadyClaimedError()
+ERROR:root:Hello, Spot! threw an exception: ResourceAlreadyClaimedError()
+ERROR:root:Hello, Spot! threw an exception: ResourceAlreadyClaimedError()
+ERROR:root:Hello, Spot! threw an exception: ResourceAlreadyClaimedError()
+ERROR:root:Hello, Spot! threw an exception: ResourceAlreadyClaimedError()
+ERROR:root:Hello, Spot! threw an exception: ResourceAlreadyClaimedError()
+INFO:root:Starting lease check-in
+INFO:CerlabSpotSDK.192.168.50.3:Powering on robot... This may take several seconds.
+INFO:CerlabSpotSDK.192.168.50.3:Robot powered on.
+INFO:CerlabSpotSDK.192.168.50.3:Set robot to accept command...
+INFO:root:Lease check-in stopped
+INFO:rospy.topics:topicmanager initialized
+INFO:root:Starting lease check-in
+INFO:CerlabSpotSDK.192.168.50.3:Powering on robot... This may take several seconds.
+INFO:CerlabSpotSDK.192.168.50.3:Robot powered on.
+INFO:CerlabSpotSDK.192.168.50.3:Set robot to accept command...
+INFO:root:Lease check-in stopped
+INFO:rospy.topics:topicmanager initialized
+INFO:rospy.topics:topicmanager initialized
+ERROR:root:Hello, Spot! threw an exception: ProxyConnectionError()
+INFO:rospy.core:signal_shutdown [atexit]
+INFO:rospy.topics:topicmanager initialized
+INFO:root:Starting lease check-in
+INFO:HelloSpotClient.192.168.50.3:Powering on robot... This may take several seconds.
+INFO:HelloSpotClient.192.168.50.3:Robot powered on.
+INFO:HelloSpotClient.192.168.50.3:Commanding robot to stand...
+INFO:HelloSpotClient.192.168.50.3:Robot standing.
+INFO:HelloSpotClient.192.168.50.3:Added comment "HelloSpot tutorial user comment." to robot log.
+INFO:HelloSpotClient.192.168.50.3:Robot safely powered off.
+INFO:root:Lease check-in stopped
+INFO:rospy.core:signal_shutdown [atexit]
+INFO:rospy.topics:topicmanager initialized
+INFO:rospy.core:signal_shutdown [atexit]
+INFO:rospy.topics:topicmanager initialized
+ERROR:root:Hello, Spot! threw an exception: ProxyConnectionError()
+INFO:rospy.core:signal_shutdown [atexit]
+INFO:rospy.topics:topicmanager initialized
+INFO:root:Starting lease check-in
+INFO:HelloSpotClient.192.168.50.3:Powering on robot... This may take several seconds.
+INFO:HelloSpotClient.192.168.50.3:Robot powered on.
+INFO:HelloSpotClient.192.168.50.3:Commanding robot to stand...
+INFO:HelloSpotClient.192.168.50.3:Robot standing.
+INFO:HelloSpotClient.192.168.50.3:Added comment "HelloSpot tutorial user comment." to robot log.
+INFO:HelloSpotClient.192.168.50.3:Robot safely powered off.
+INFO:root:Lease check-in stopped
+ERROR:root:Hello, Spot! threw an exception: AttributeError("'NoneType' object has no attribute 'ensure_client'")
+INFO:rospy.core:signal_shutdown [atexit]
+INFO:rospy.topics:topicmanager initialized
+INFO:root:Starting lease check-in
+INFO:HelloSpotClient.192.168.50.3:Powering on robot... This may take several seconds.
+INFO:HelloSpotClient.192.168.50.3:Robot powered on.
+INFO:HelloSpotClient.192.168.50.3:Commanding robot to stand...
+INFO:HelloSpotClient.192.168.50.3:Robot standing.
+INFO:HelloSpotClient.192.168.50.3:Added comment "HelloSpot tutorial user comment." to robot log.
+INFO:HelloSpotClient.192.168.50.3:Robot safely powered off.
+INFO:root:Lease check-in stopped
+ERROR:root:Hello, Spot! threw an exception: AttributeError("'NoneType' object has no attribute 'ensure_client'")
+INFO:rospy.core:signal_shutdown [atexit]
+INFO:rospy.topics:topicmanager initialized
+INFO:rospy.topics:topicmanager initialized
+INFO:rospy.topics:topicmanager initialized
+INFO:root:Starting lease check-in
+INFO:HelloSpotClient.192.168.50.3:Powering on robot... This may take several seconds.
+INFO:HelloSpotClient.192.168.50.3:Robot powered on.
+INFO:HelloSpotClient.192.168.50.3:Commanding robot to stand...
+INFO:HelloSpotClient.192.168.50.3:Added comment "HelloSpot tutorial user comment." to robot log.
+INFO:HelloSpotClient.192.168.50.3:Robot safely powered off.
+INFO:root:Lease check-in stopped
+INFO:rospy.core:signal_shutdown [atexit]
+INFO:rospy.topics:topicmanager initialized
+INFO:rospy.topics:topicmanager initialized
+INFO:rospy.topics:topicmanager initialized
+ERROR:root:Hello, Spot! threw an exception: ProxyConnectionError()
+ERROR:root:Hello, Spot! threw an exception: ProxyConnectionError()
+INFO:rospy.core:signal_shutdown [atexit]
+INFO:root:Starting lease check-in
+INFO:HelloSpotClient.192.168.50.3:Powering on robot... This may take several seconds.
+INFO:HelloSpotClient.192.168.50.3:Robot powered on.
+INFO:HelloSpotClient.192.168.50.3:Commanding robot to stand...
+ERROR:root:Hello, Spot! threw an exception: AttributeError("'NoneType' object has no attribute 'robot_command'")
+INFO:HelloSpotClient.192.168.50.3:Robot standing.
+INFO:HelloSpotClient.192.168.50.3:Added comment "HelloSpot tutorial user comment." to robot log.
+INFO:HelloSpotClient.192.168.50.3:Robot safely powered off.
+INFO:root:Lease check-in stopped
+INFO:root:Starting lease check-in
+INFO:HelloSpotClient.192.168.50.3:Powering on robot... This may take several seconds.
+INFO:HelloSpotClient.192.168.50.3:Robot powered on.
+INFO:HelloSpotClient.192.168.50.3:Commanding robot to stand...
+INFO:HelloSpotClient.192.168.50.3:Robot standing.
+INFO:HelloSpotClient.192.168.50.3:Added comment "HelloSpot tutorial user comment." to robot log.
+INFO:HelloSpotClient.192.168.50.3:Robot safely powered off.
+INFO:root:Lease check-in stopped
+INFO:root:Starting lease check-in
+INFO:HelloSpotClient.192.168.50.3:Powering on robot... This may take several seconds.
+INFO:HelloSpotClient.192.168.50.3:Robot powered on.
+INFO:HelloSpotClient.192.168.50.3:Commanding robot to stand...
+ERROR:root:Hello, Spot! threw an exception: AttributeError("'NoneType' object has no attribute 'robot_command'")
+INFO:HelloSpotClient.192.168.50.3:Robot standing.
+INFO:HelloSpotClient.192.168.50.3:Added comment "HelloSpot tutorial user comment." to robot log.
+INFO:HelloSpotClient.192.168.50.3:Robot safely powered off.
+INFO:root:Lease check-in stopped
+INFO:root:Starting lease check-in
+INFO:HelloSpotClient.192.168.50.3:Powering on robot... This may take several seconds.
+INFO:HelloSpotClient.192.168.50.3:Robot powered on.
+INFO:HelloSpotClient.192.168.50.3:Commanding robot to stand...
+INFO:HelloSpotClient.192.168.50.3:Robot standing.
+INFO:root:Lease check-in stopped
+ERROR:root:Hello, Spot! threw an exception: AttributeError("'NoneType' object has no attribute 'robot_command'")
+ERROR:root:Hello, Spot! threw an exception: AttributeError("'NoneType' object has no attribute 'robot_command'")
+INFO:root:Starting lease check-in
+INFO:HelloSpotClient.192.168.50.3:Powering on robot... This may take several seconds.
+INFO:HelloSpotClient.192.168.50.3:Robot powered on.
+INFO:HelloSpotClient.192.168.50.3:Commanding robot to stand...
+INFO:root:Lease check-in stopped
+INFO:root:Starting lease check-in
+INFO:HelloSpotClient.192.168.50.3:Powering on robot... This may take several seconds.
+INFO:HelloSpotClient.192.168.50.3:Robot powered on.
+INFO:HelloSpotClient.192.168.50.3:Commanding robot to stand...
+INFO:root:Lease check-in stopped
+INFO:root:Starting lease check-in
+INFO:HelloSpotClient.192.168.50.3:Powering on robot... This may take several seconds.
+INFO:HelloSpotClient.192.168.50.3:Robot powered on.
+INFO:HelloSpotClient.192.168.50.3:Commanding robot to stand...
+ERROR:root:Hello, Spot! threw an exception: AttributeError("'NoneType' object has no attribute 'robot_command'")
+INFO:HelloSpotClient.192.168.50.3:Robot standing.
+INFO:HelloSpotClient.192.168.50.3:Added comment "HelloSpot tutorial user comment." to robot log.
+INFO:HelloSpotClient.192.168.50.3:Robot safely powered off.
+INFO:root:Lease check-in stopped
+INFO:root:Starting lease check-in
+INFO:HelloSpotClient.192.168.50.3:Powering on robot... This may take several seconds.
+INFO:HelloSpotClient.192.168.50.3:Robot powered on.
+INFO:HelloSpotClient.192.168.50.3:Commanding robot to stand...
+ERROR:root:Hello, Spot! threw an exception: AttributeError("'NoneType' object has no attribute 'robot_command'")
+INFO:HelloSpotClient.192.168.50.3:Robot standing.
+INFO:HelloSpotClient.192.168.50.3:Added comment "HelloSpot tutorial user comment." to robot log.
+INFO:HelloSpotClient.192.168.50.3:Robot safely powered off.
+INFO:root:Lease check-in stopped
+INFO:root:Starting lease check-in
+INFO:HelloSpotClient.192.168.50.3:Powering on robot... This may take several seconds.
+INFO:HelloSpotClient.192.168.50.3:Robot powered on.
+INFO:HelloSpotClient.192.168.50.3:Commanding robot to stand...
+INFO:root:Lease check-in stopped
+ERROR:root:Hello, Spot! threw an exception: AttributeError("'NoneType' object has no attribute 'robot_command'")
+ERROR:root:Hello, Spot! threw an exception: AttributeError("'NoneType' object has no attribute 'robot_command'")
+INFO:rospy.topics:topicmanager initialized
+INFO:root:Starting lease check-in
+INFO:CerlabSpotSDK.192.168.80.3:Powering on robot... This may take several seconds.
+INFO:CerlabSpotSDK.192.168.80.3:Robot powered on.
+INFO:CerlabSpotSDK.192.168.80.3:Set robot to accept command...
+INFO:root:Lease check-in stopped
+INFO:rospy.topics:topicmanager initialized
+ERROR:root:Hello, Spot! threw an exception: ProxyConnectionError()
+ERROR:root:Hello, Spot! threw an exception: ProxyConnectionError()
+ERROR:root:Hello, Spot! threw an exception: ProxyConnectionError()
+ERROR:root:Hello, Spot! threw an exception: ProxyConnectionError()
+ERROR:root:Hello, Spot! threw an exception: ProxyConnectionError()
+ERROR:root:Hello, Spot! threw an exception: ProxyConnectionError()
+ERROR:root:Hello, Spot! threw an exception: ProxyConnectionError()
+ERROR:root:Hello, Spot! threw an exception: ProxyConnectionError()
+ERROR:root:Hello, Spot! threw an exception: ProxyConnectionError()
+INFO:rospy.core:signal_shutdown [atexit]
+INFO:rospy.topics:topicmanager initialized
+ERROR:root:Hello, Spot! threw an exception: ProxyConnectionError()
+ERROR:root:Hello, Spot! threw an exception: ProxyConnectionError()
+ERROR:root:Hello, Spot! threw an exception: ProxyConnectionError()
+ERROR:root:Hello, Spot! threw an exception: ProxyConnectionError()
+ERROR:root:Hello, Spot! threw an exception: ProxyConnectionError()
+ERROR:root:Hello, Spot! threw an exception: ProxyConnectionError()
+ERROR:root:Hello, Spot! threw an exception: ProxyConnectionError()
+ERROR:root:Hello, Spot! threw an exception: ProxyConnectionError()
+ERROR:root:Hello, Spot! threw an exception: ProxyConnectionError()
+ERROR:root:Hello, Spot! threw an exception: ProxyConnectionError()
+ERROR:root:Hello, Spot! threw an exception: ProxyConnectionError()
+ERROR:root:Hello, Spot! threw an exception: ProxyConnectionError()
+ERROR:root:Hello, Spot! threw an exception: ProxyConnectionError()
+ERROR:root:Hello, Spot! threw an exception: ProxyConnectionError()
+ERROR:root:Hello, Spot! threw an exception: ProxyConnectionError()
+ERROR:root:Hello, Spot! threw an exception: ProxyConnectionError()
+ERROR:root:Hello, Spot! threw an exception: ProxyConnectionError()
+ERROR:root:Hello, Spot! threw an exception: ProxyConnectionError()
+ERROR:root:Hello, Spot! threw an exception: ProxyConnectionError()
+ERROR:root:Hello, Spot! threw an exception: ProxyConnectionError()
+ERROR:root:Hello, Spot! threw an exception: ProxyConnectionError()
+INFO:rospy.core:signal_shutdown [atexit]
+INFO:rospy.topics:topicmanager initialized
+ERROR:root:Hello, Spot! threw an exception: ProxyConnectionError()
+ERROR:root:Hello, Spot! threw an exception: ProxyConnectionError()
+ERROR:root:Hello, Spot! threw an exception: ProxyConnectionError()
+ERROR:root:Hello, Spot! threw an exception: ProxyConnectionError()
+ERROR:root:Hello, Spot! threw an exception: ProxyConnectionError()
+ERROR:root:Hello, Spot! threw an exception: ProxyConnectionError()
+ERROR:root:Hello, Spot! threw an exception: ProxyConnectionError()
+ERROR:root:Hello, Spot! threw an exception: ProxyConnectionError()
+ERROR:root:Hello, Spot! threw an exception: ProxyConnectionError()
+INFO:rospy.core:signal_shutdown [atexit]
+INFO:rospy.topics:topicmanager initialized
+INFO:root:Starting lease check-in
+INFO:CerlabSpotSDK.192.168.50.3:Powering on robot... This may take several seconds.
+INFO:CerlabSpotSDK.192.168.50.3:Robot powered on.
+INFO:CerlabSpotSDK.192.168.50.3:Set robot to accept command...
+INFO:root:Lease check-in stopped
+INFO:rospy.topics:topicmanager initialized
+INFO:root:Starting lease check-in
+INFO:CerlabSpotSDK.192.168.50.3:Powering on robot... This may take several seconds.
+INFO:CerlabSpotSDK.192.168.50.3:Robot powered on.
+INFO:CerlabSpotSDK.192.168.50.3:Set robot to accept command...
+INFO:root:Lease check-in stopped
+INFO:rospy.topics:topicmanager initialized
+INFO:root:Starting lease check-in
+INFO:CerlabSpotSDK.192.168.50.3:Powering on robot... This may take several seconds.
+INFO:CerlabSpotSDK.192.168.50.3:Robot powered on.
+INFO:CerlabSpotSDK.192.168.50.3:Set robot to accept command...
+INFO:root:Lease check-in stopped
+INFO:rospy.topics:topicmanager initialized
+INFO:root:Starting lease check-in
+INFO:CerlabSpotSDK.192.168.50.3:Powering on robot... This may take several seconds.
+INFO:root:Lease check-in stopped
+INFO:rospy.core:signal_shutdown [atexit]
+INFO:rospy.topics:topicmanager initialized
+INFO:root:Starting lease check-in
+INFO:CerlabSpotSDK.192.168.50.3:Powering on robot... This may take several seconds.
+INFO:root:Lease check-in stopped
+INFO:rospy.core:signal_shutdown [atexit]
+INFO:rospy.topics:topicmanager initialized
+INFO:root:Starting lease check-in
+INFO:CerlabSpotSDK.192.168.50.3:Powering on robot... This may take several seconds.
+INFO:CerlabSpotSDK.192.168.50.3:Robot powered on.
+INFO:CerlabSpotSDK.192.168.50.3:Set robot to accept command...
+INFO:root:Lease check-in stopped
+INFO:rospy.topics:topicmanager initialized
+ERROR:root:Hello, Spot! threw an exception: ResourceAlreadyClaimedError()
+ERROR:root:Hello, Spot! threw an exception: ResourceAlreadyClaimedError()
+ERROR:root:Hello, Spot! threw an exception: ResourceAlreadyClaimedError()
+ERROR:root:Hello, Spot! threw an exception: ResourceAlreadyClaimedError()
+INFO:rospy.core:signal_shutdown [atexit]
+INFO:rospy.topics:topicmanager initialized
+INFO:root:Starting lease check-in
+INFO:CerlabSpotSDK.192.168.50.3:Powering on robot... This may take several seconds.
+INFO:CerlabSpotSDK.192.168.50.3:Robot powered on.
+INFO:CerlabSpotSDK.192.168.50.3:Set robot to accept command...
+INFO:root:Lease check-in stopped
+INFO:root:Starting lease check-in
+INFO:CerlabSpotSDK.192.168.50.3:Powering on robot... This may take several seconds.
+INFO:CerlabSpotSDK.192.168.50.3:Robot powered on.
+INFO:CerlabSpotSDK.192.168.50.3:Set robot to accept command...
+INFO:root:Lease check-in stopped
+INFO:root:Starting lease check-in
+INFO:CerlabSpotSDK.192.168.50.3:Powering on robot... This may take several seconds.
+INFO:CerlabSpotSDK.192.168.50.3:Robot powered on.
+INFO:CerlabSpotSDK.192.168.50.3:Set robot to accept command...
+INFO:root:Lease check-in stopped
+ERROR:root:Hello, Spot! threw an exception: ResourceAlreadyClaimedError()
+ERROR:root:Hello, Spot! threw an exception: ResourceAlreadyClaimedError()
+ERROR:root:Hello, Spot! threw an exception: ResourceAlreadyClaimedError()
+ERROR:root:Hello, Spot! threw an exception: ResourceAlreadyClaimedError()
+INFO:root:Starting lease check-in
+INFO:CerlabSpotSDK.192.168.50.3:Powering on robot... This may take several seconds.
+INFO:CerlabSpotSDK.192.168.50.3:Robot powered on.
+INFO:CerlabSpotSDK.192.168.50.3:Set robot to accept command...
+INFO:root:Lease check-in stopped

@@ -21,7 +21,8 @@ from spot.msg import SemanticLabel
 
 rospack = rospkg.RosPack()
 pkg_path = rospack.get_path('spot')
-model_path = os.path.join(pkg_path, 'src/spot', 'yolov7.pt')
+# model_path = os.path.join(pkg_path, 'src/spot', 'yolov7.pt')
+model_path = os.path.join(pkg_path, 'src/spot', 'yolov7-tiny.pt')
 
 bridge = CvBridge()
 
@@ -48,6 +49,7 @@ def action():
   # cv2.namedWindow('yolo_results')
 
   while True:
+  # while not rospy.is_shutdown():
     rgb = spot_webrtc.rgbImage.copy()
     img = spot_webrtc.cvImage.copy()
 
@@ -59,7 +61,7 @@ def action():
     tl = 3
     for i in range(len(box)):
       label = '{} {:.1f}%'.format(model.names[int(cat[i])], conf[i]*100.0)
-      print(label)
+      # print(label)
       color = [random.randint(0, 255) for _ in range(3)]
       c1, c2 = (int(box[i][0]), int(box[i][1])), (int(box[i][2]), int(box[i][3]))
       cv2.rectangle(img, c1, c2, color, tl, lineType=cv2.LINE_AA) # object bounding box
@@ -78,7 +80,7 @@ def action():
 
     raw_img = spot_webrtc.cvImage.copy()
 
-    # publish_image_to_ros(raw_img)
+    publish_image_to_ros(raw_img)
     publish_yolo_img_to_ros(img)
     publish_bbox(box, cat, conf)
     publish_sem_label(model, cat)
@@ -145,7 +147,7 @@ def publish_sem_label(model, cat):
 
 
 if __name__ == '__main__':
-  # img_pub = rospy.Publisher('spot_image', Image, queue_size=10)
+  img_pub = rospy.Publisher('spot_image', Image, queue_size=10)
   yolo_img_pub = rospy.Publisher('yolo_image', Image, queue_size=10)
   bbox_pub = rospy.Publisher('yolo_bbox', Detection2DArray, queue_size=10)
   label_pub = rospy.Publisher('yolo_label', SemanticLabel, queue_size=10)
@@ -166,6 +168,6 @@ if __name__ == '__main__':
     spot_move.startMonitor(spot.hostname, spot.robot, movement=action)
 
   except KeyboardInterrupt:
-      spot_move.endSpot()
+      spot.endSpot()
       rospy.signal_shutdown('Keyboard interrupt')
       print("Program terminated.")

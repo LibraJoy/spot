@@ -9,6 +9,7 @@ import time
 import rospy
 from sensor_msgs.msg import Image
 from cv_bridge import CvBridge, CvBridgeError
+import os
 
 import threading
 
@@ -45,7 +46,8 @@ def startMonitor(hostname, robot, process=spot_webrtc.captureT):
   # start webrtc thread
   webrtc_thread.start()
 
-  rate = rospy.Rate(20)
+  # rate = rospy.Rate(20)
+  rate = rospy.Rate(10)
   while not rospy.is_shutdown():
     #print(spot_webrtc.frameCount)
     if not webrtc_thread.is_alive():
@@ -58,7 +60,14 @@ def startMonitor(hostname, robot, process=spot_webrtc.captureT):
         print("-------------------- NO FRAME RECEIVED FROM QUEUE --------------------")
     else:
       img = spot_webrtc.cvImage.copy()
+      # import pdb;pdb.set_trace()
+      # for i in range(img.shape[1]):
+      #   if i>1200:
+      #     img[:,i,:] = 0
+  
+      # print(rospy.Time.now())
       # cv2.imshow("Image", img)
+
       publish_image_to_ros(img)
 
       # for i in range(6):
@@ -76,6 +85,7 @@ def publish_image_to_ros(cv_img):
   global bridge
   try:
     ros_img = bridge.cv2_to_imgmsg(cv_img, encoding="bgr8")
+    ros_img.header.stamp = rospy.Time.now()
     img_pub.publish(ros_img)
   except CvBridgeError as e:
     print(e)

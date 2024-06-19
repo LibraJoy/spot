@@ -5,6 +5,7 @@ import torch
 import yolov7
 import os
 import rospkg
+from time import process_time
 
 import rospy
 from sensor_msgs.msg import Image
@@ -14,7 +15,7 @@ from spot.msg import SemanticLabel
 
 rospack = rospkg.RosPack()
 pkg_path = rospack.get_path('spot')
-model_path = os.path.join(pkg_path, 'src/spot', 'yolov7.pt')
+model_path = os.path.join(pkg_path, 'src/spot', 'yolov7-tiny.pt')
 
 bridge = CvBridge()
 model = None
@@ -36,7 +37,7 @@ def publish_yolo_res_img_to_ros(cv_img):
   except CvBridgeError as e:
     print(e)
 
-def publish_bbox(box, cat, conf):
+def publish_bbox(box, cat, conf, timestamp):
   bbox_msg = Detection2DArray()
   bbox_msg.detections = []
 
@@ -54,7 +55,7 @@ def publish_bbox(box, cat, conf):
     bbox.results.append(hypothesis)
     
     bbox_msg.detections.append(bbox)
-    bbox_msg.header.stamp = rospy.Time.now()
+    bbox_msg.header.stamp = timestamp
     bbox_msg.header.frame_id = 'yolo_bbox'
 
   bbox_pub.publish(bbox_msg)
@@ -78,11 +79,18 @@ def img_cb(msg):
     rospy.loginfo("No image received, waiting ...")
 
   ros_img = msg
+  timestamp = msg.header.stamp
+  # yolo_img_pub.publish(ros_img)
 
+  t1_start = process_time()
+  rospy.loginfo("before img_to_cv2")
   cv_img = bridge.imgmsg_to_cv2(ros_img, desired_encoding='passthrough').copy()
+  # print(cv_img)
+  rospy.loginfo("before cvtColor")
   rgb_img = cv2.cvtColor(cv_img, cv2.COLOR_BGR2RGB)
-
+  rospy.loginfo("before inference")
   results = model(rgb_img)
+  rospy.loginfo("get restuls")
   p = results.pred[0]
   box = p[:,:4] # bbox start and end points
   conf = p[:,4] # condidence
@@ -99,9 +107,16 @@ def img_cb(msg):
     cv2.rectangle(cv_img, c1, c2, color, -1, cv2.LINE_AA)  # filled box for labels
     cv2.putText(cv_img, label, (c1[0], c1[1] - 2), 0, tl / 3, [225, 255, 255], thickness=tf, lineType=cv2.LINE_AA)
   
-  publish_bbox(box, cat, conf)
+  publish_bbox(box, cat, conf, timestamp)
+  # yolo_img_pub.publish(ros_img)
   publish_yolo_res_img_to_ros(cv_img)
   publish_sem_label(model, cat)
+  t1_stop = process_time() 
+   
+  print("Elapsed time:", t1_stop, t1_start)  
+    
+  print("Elapsed time during the whole program in seconds:", 
+                                          t1_stop-t1_start) 
 
 
 if __name__ == '__main__':
@@ -109,6 +124,7 @@ if __name__ == '__main__':
     model = load_yolo_model(model_path)
     rospy.init_node('yolo_publisher', anonymous=True)
     img_sub = rospy.Subscriber('camera/color/image_raw', Image, img_cb)
+    # img_sub = rospy.Subscriber('camera/color/image_raw_subsample', Image, img_cb)
     yolo_img_pub = rospy.Publisher('uav/yolo_image', Image, queue_size=10)
     bbox_pub = rospy.Publisher('uav/yolo_bbox', Detection2DArray, queue_size=10)
     label_pub = rospy.Publisher('uav/yolo_label', SemanticLabel, queue_size=10)
