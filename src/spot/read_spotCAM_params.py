@@ -78,11 +78,15 @@ def hello_spot(config):
         # The set of valid commands for a robot depends on hardware configuration. See
         # RobotCommandBuilder for more detailed examples on command building. The robot
         # command service requires timesync between the robot and the client.
-        command_client = robot.ensure_client(RobotCommandClient.default_service_name)
+        # command_client = robot.ensure_client(RobotCommandClient.default_service_name)
 
-        print("create camera client")
-        camera_client = robot.ensure_client(MediaLogClient.default_service_name)
-        readParam(camera_client)
+        # print("create camera client")
+        # camera_client = robot.ensure_client(MediaLogClient.default_service_name)
+        # readParam_from_camera_client(camera_client)
+
+        print("create image client")
+        image_client = robot.ensure_client(ImageClient.default_service_name)
+        readParam_from_image_client(image_client)
 
         # # lease_prot = lease_client.acquire()
         # client = robot.ensure_client(SpotCheckClient.default_service_name)
@@ -95,12 +99,31 @@ def hello_spot(config):
         
         # run_camera_calibration(client, lease, verbose=True)
 
+def readParam_from_image_client(image_client):
+    
+    sources = image_client.list_image_sources()
+    # only provided with pinhole camera model
+    for camera in sources:
+        # camera = source.name
+        print(camera)
+        # if camera.name in ["back_fisheye_image", "frontleft_fisheye_image", "frontright_fisheye_image", "left_fisheye_image", "right_fisheye_image"]:
+        #     fx = camera.intrinsics.pinhole.focal_length.x
+        #     fy = camera.intrinsics.pinhole.focal_length.y
 
+        #     cx = camera.intrinsics.pinhole.principal_point.x
+        #     cy = camera.intrinsics.pinhole.principal_point.y
 
-def readParam(camera_client):
+        #     # intrinsics = camera.intrinsics
+
+        #     print(f"{fx}, {fy}, {cx}, {cy}")
+        #     # print(intrinsics)
+
+def readParam_from_camera_client(camera_client):
     cameras = camera_client.list_cameras()
-    cameras = [c for c in cameras if not (c.name == 'pano' or c.name == 'ptz')]
-    # camera = [c for c in cameras if (c.name == 'pano')]
+    # cameras = [c for c in cameras if not (c.name == 'pano' or c.name == 'ptz')]
+
+    # for c in cameras:
+    #     print(f"camera choices: {c.name}")
 
     sum_fx = 0
     sum_fy = 0
@@ -111,9 +134,12 @@ def readParam(camera_client):
     sum_k3 = 0
     sum_k4 = 0
 
-    for i in range(5):
+    for i in range(len(cameras)):
         camera = cameras[i]
-        print(f"====== camera{i} ======")
+        # print(f"====== camera{i} ======")
+        print(f"======== {camera.name} =======")
+        print(f"Resolution: width = {camera.resolution.x}, height = {camera.resolution.y}")
+
         fx = camera.pinhole.focal_length.x
         fy = camera.pinhole.focal_length.y
         cx = camera.pinhole.center_point.x
@@ -160,12 +186,12 @@ def readParam(camera_client):
     distortion = [
         [avg_k1, avg_k2, avg_k3, avg_k4]
     ]
-    print("====== Average Intrinsics Matrix ======")
-    for row in intrinsics:
-        print(row)
+    # print("====== Average Intrinsics Matrix ======")
+    # for row in intrinsics:
+    #     print(row)
 
-    print("====== Average Distortion Coefficients ======")
-    print(distortion)
+    # print("====== Average Distortion Coefficients ======")
+    # print(distortion)
 
 def main(argv):
     """Command line interface."""

@@ -171,7 +171,7 @@ include_directories(
 catkin_install_python(PROGRAMS
   scripts/publisher.py
   scripts/img_pub.py
-  scripts/subscriber.py
+  scripts/spot_base.py
   scripts/yolo_res_pub.py
   scripts/uav_yolo_res_pub.py
   scripts/repub_lidar_debug.py

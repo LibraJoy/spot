@@ -1,0 +1,47 @@
+Script started on 2024-06-20 17:31:18-04:00 [TERM="xterm-256color" TTY="/dev/pts/8" COLUMNS="80" LINES="24"]
+]0;cerlab@cerlab67: ~/spot_ws/src/spot[01;32mcerlab@cerlab67[00m:[01;34m~/spot_ws/src/spot[00m$ ls\[K[K[Kcd scripts/
+]0;cerlab@cerlab67: ~/spot_ws/src/spot/scripts[01;32mcerlab@cerlab67[00m:[01;34m~/spot_ws/src/spot/scripts[00m$ ls
+[0m[01;32mimg_pub.py[0m                repub_lidar_debug.py  uav_yolo_res_pub.py
+launch_spot_img_lidar.sh  [01;32mspot_base.py[0m          webrtc.log
+[01;32mpublisher.py[0m              test_img_sub.py       yolo_res_pub.py
+]0;cerlab@cerlab67: ~/spot_ws/src/spot/scripts[01;32mcerlab@cerlab67[00m:[01;34m~/spot_ws/src/spot/scripts[00m$ python3 e[K[K[K[K[K[K[K[K[Kcd ../src/
+]0;cerlab@cerlab67: ~/spot_ws/src/spot/src[01;32mcerlab@cerlab67[00m:[01;34m~/spot_ws/src/spot/src[00m$ ls
+[0m[01;34mspot[0m
+]0;cerlab@cerlab67: ~/spot_ws/src/spot/src[01;32mcerlab@cerlab67[00m:[01;34m~/spot_ws/src/spot/src[00m$ cd spot/__pycache__/
+]0;cerlab@cerlab67: ~/spot_ws/src/spot/src/spot/__pycache__[01;32mcerlab@cerlab67[00m:[01;34m~/spot_ws/src/spot/src/spot/__pycache__[00m$ cd ..
+]0;cerlab@cerlab67: ~/spot_ws/src/spot/src/spot[01;32mcerlab@cerlab67[00m:[01;34m~/spot_ws/src/spot/src/spot[00m$ ls
+[0m[01;32mCameraService.py[0m           [01;34m__pycache__[0m             [01;32mspot_spot.py[0m
+[01;32mcircle.py[0m                  read_spotCAM_params.py  [01;32mspot_util.py[0m
+[01;32mdemo1.py[0m                   [01;32mreplay_mission.py[0m       [01;32mspot_webrtc.py[0m
+[01;32mdemo2-new.py[0m               [01;32mrequirements.txt[0m        [01;32msubscriber_copy.py[0m
+[01;32mdemo2.py[0m                   [01;32mrot.py[0m                  [01;32mtest.py[0m
+[01;32mdemo3.py[0m                   [01;32msave_pic.py[0m             [01;32mtrial_2win.py[0m
+[01;32mdepth.py[0m                   [01;32msearch_window.py[0m        [01;32mtrial.py[0m
+[01;32mestop_gui.py[0m               [01;32mspot_battery.py[0m         [01;32mversion.py[0m
+[01;32mestop_nogui.py[0m             spotCAM_params.txt      [01;32mwebrtc_client.py[0m
+[01;32mfiducial_follow.py[0m         [01;32mspot_command.py[0m         [01;32mwebrtc.log[0m
+[01;32mgraph_nav_command_line.py[0m  [01;32mspot_manual.py[0m          yolov7.pt
+[01;32m__init__.py[0m                [01;32mspot_move.py[0m            yolov7-tiny.pt
+[01;32mlocation.py[0m                [01;32mspot_sit.py[0m             yolo_video.py
+]0;cerlab@cerlab67: ~/spot_ws/src/spot/src/spot[01;32mcerlab@cerlab67[00m:[01;34m~/spot_ws/src/spot/src/spot[00m$ python3 estop_n[Kgui.py 
+['192.168.50.3']
+Traceback (most recent call last):
+  File "estop_gui.py", line 301, in <module>
+    if not main(sys.argv[1:]):
+  File "estop_gui.py", line 297, in main
+    exit(build_and_run_app(options.hostname, estop_client, options))
+  File "estop_gui.py", line 246, in build_and_run_app
+    qt_app, button_window = build_app(hostname, estop_client, options.timeout)
+  File "estop_gui.py", line 232, in build_app
+    gui = EstopGui(hostname, estop_client, timeout_sec, name='EStop')
+  File "estop_gui.py", line 65, in __init__
+    ep.force_simple_setup()
+  File "/home/cerlab/.local/lib/python3.8/site-packages/bosdyn/client/estop.py", line 304, in force_simple_setup
+    active_config = self.client.set_config(new_config, active_config.unique_id)
+  File "/home/cerlab/.local/lib/python3.8/site-packages/bosdyn/client/estop.py", line 141, in set_config
+    return self.call(self._stub.SetEstopConfig, req, _active_config_from_config_response,
+  File "/home/cerlab/.local/lib/python3.8/site-packages/bosdyn/client/common.py", line 276, in processor
+    return func(self, rpc_method, request, value_from_response=value_from_response,
+  File "/home/cerlab/.local/lib/python3.8/site-packages/bosdyn/client/common.py", line 416, in call
+    return self.handle_response(response, error_from_response, value_from_response)
+  File "/home/cerlab/.local/lib

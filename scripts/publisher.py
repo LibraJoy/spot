@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-import spot_spot as spot
+import spot.spot_spot as spot
 import time
 import bosdyn.client.lease
 import bosdyn.client.util
@@ -58,8 +58,8 @@ def printlocation():
 
 if __name__ == '__main__':
     try:
-        pose_publisher = rospy.Publisher('spot_location', PoseStamped, queue_size=10)
-        odom_publisher = rospy.Publisher('spot_odom', Odometry, queue_size=10)
+        pose_publisher = rospy.Publisher('/spot/pose', PoseStamped, queue_size=10)
+        odom_publisher = rospy.Publisher('/spot/odom', Odometry, queue_size=10)
         rospy.init_node('spot_publisher', anonymous=True)
         rate = rospy.Rate(10)
         # print("Starting Spot Publisher")
@@ -107,6 +107,8 @@ if __name__ == '__main__':
                     rospy.loginfo(odom_msg)
                     odom_publisher.publish(odom_msg)
                     rate.sleep()
+        else:
+            print("connection fails")
 
     except rospy.ROSInterruptException:
         pass

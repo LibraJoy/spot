@@ -83,6 +83,7 @@ def _connect():
     #spot_cam.register_all_service_clients(sdk2)
     #cam = sdk2.create_robot("192.168.80.3")
     #robot.authenticate('user', 'scgau6g5w987')
+    robot.logger.info("ptz")
     ptzCam = CameraService(robot)
     # initialize ptz camera position (pan:180, tilt: 0, zoom: 1)
     ptzCam.set_position_ptz(pan, tilt, zoom)
@@ -91,8 +92,10 @@ def _connect():
     # Establish time sync with the robot. This kicks off a background thread to establish time sync.
     # Time sync is required to issue commands to the robot. After starting time sync thread, block
     # until sync is established.
+    robot.logger.info("waiting for time sync...")
     robot.time_sync.wait_for_sync()
 
+    robot.logger.info("sync established.")
     # Verify the robot is not estopped and that an external application has registered and holds
     # an estop endpoint.
     assert not robot.is_estopped(), "Robot is estopped. Please use an external E-Stop client, " \
@@ -104,13 +107,14 @@ def _connect():
     # controlling the robot, it should return the lease so other clients can
     # control it. The LeaseKeepAlive object takes care of acquiring and returning
     # the lease for us.
-
+    robot.logger.info("Acquiring lease...")
     lease_client = robot.ensure_client(bosdyn.client.lease.LeaseClient.default_service_name)
 
     # Setup clients for the robot state and robot command services.
+    robot.logger.info("Setting up clients...")
     robot_state_client = robot.ensure_client(RobotStateClient.default_service_name)
     robot_command_client = robot.ensure_client(RobotCommandClient.default_service_name)
-    
+    robot.logger.info("Ready to power on robot.")
     with bosdyn.client.lease.LeaseKeepAlive(lease_client, must_acquire=True, return_at_exit=False):
         # Now, we are ready to power on the robot. This call will block until the power
         # is on. Commands would fail if this did not happen. We can also check that the robot is
