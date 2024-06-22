@@ -43,13 +43,16 @@ class spotMoveBase:
     def __init__(self):
         # pass
         self.rate = rospy.Rate(15)
-        rospy.Subscriber("/spot/waypoint", PoseStamped, self.path_callback)
+        rospy.Subscriber("/spot/waypoint", PoseStamped, self.goal_pose_sub_callback)
         self.pose_publisher = rospy.Publisher('/spot/pose', PoseStamped, queue_size=10)
         self.odom_publisher = rospy.Publisher('/spot/odom', Odometry, queue_size=10)
-        rospy.Timer(rospy.Duration(0.05), self.odomTimerCallback)
+        rospy.Timer(rospy.Duration(0.03), self.odom_pub_timer_callback)
+        rospy.Timer(rospy.Duration(0.05), self.move_status_check_timer_callback)
         self.goal = [0., 0. ,0.] # x,y,yaw
+        self.cmd_id = None
 
-    def odomTimerCallback(self, event):
+    def odom_pub_timer_callback(self, event):
+        start_time = rospy.Time.now()
         pose_msg = PoseStamped()
         pose_msg.header.stamp = rospy.Time.now()
         pose_msg.header.frame_id = "map"
@@ -87,7 +90,48 @@ class spotMoveBase:
 
         # rospy.loginfo(odom_msg)
         self.odom_publisher.publish(odom_msg)
-        self.rate.sleep()
+        print(f"odom pub time: {rospy.Time.now() - start_time}")
+
+    def goal_pose_sub_callback(self, msg):
+        if self.goal[0] == msg.pose.position.x and self.goal[1] == msg.pose.position.y:
+            rospy.loginfo("subscribed goal has not changed, do not upddate command")
+            return
+
+        self.goal = [msg.pose.position.x, msg.pose.position.y, 0]
+        rospy.loginfo(f"waypoint: x: {self.goal[0]}, y: {self.goal[1]}")
+
+        global robot_command_client 
+        global robot_state_client
+        frame_name = VISION_FRAME_NAME
+        [dx, dy, dyaw] = self.goal
+        
+        # heading problem need to be solved, currently no turning head
+        transforms = spot.robot_state_client.get_robot_state().kinematic_state.transforms_snapshot
+        body_tform_goal = math_helpers.SE2Pose(x=dx, y=dy, angle=0)
+        out_tform_body = get_se2_a_tform_b(transforms, frame_name, BODY_FRAME_NAME)
+        out_tform_goal = out_tform_body * body_tform_goal
+        robot_cmd = RobotCommandBuilder.synchro_se2_trajectory_point_command(
+            goal_x=dx, goal_y=dy, goal_heading=dyaw,
+            frame_name=frame_name, params=RobotCommandBuilder.mobility_params(stair_hint=False))
+        end_time = 10.0
+        self.cmd_id = spot.robot_command_client.robot_command(lease=None, command=robot_cmd,
+                                                    end_time_secs=time.time() + end_time)
+        print(f"movement command request sent: {self.goal}")
+
+    def move_status_check_timer_callback(self, event):
+        if not self.cmd_id:
+            rospy.loginfo("no command id, skip move status check")
+            return
+        print(f"current goal in global move: {self.goal}")
+        print(f"current position: {self.get_location()}")
+        feedback = spot.robot_command_client.robot_command_feedback(self.cmd_id)
+        mobility_feedback = feedback.feedback.synchronized_feedback.mobility_command_feedback
+        if mobility_feedback.status != RobotCommandFeedbackStatus.STATUS_PROCESSING:
+            print("Failed to reach the goal")
+        traj_feedback = mobility_feedback.se2_trajectory_feedback
+        if (traj_feedback.status == traj_feedback.STATUS_AT_GOAL and
+                traj_feedback.body_movement_status == traj_feedback.BODY_STATUS_SETTLED):
+            print("Arrived at the goal.")
 
     # def get_location(self):
     #     global robot_state_client
@@ -175,68 +219,50 @@ class spotMoveBase:
             logger.error("Spot move exception: %r", exc)
             return False
 
-    def global_move(self, stairs=False):
-        global robot_command_client 
-        global robot_state_client
-        frame_name = VISION_FRAME_NAME
-        [dx, dy, dyaw] = self.goal
+    # def global_move(self, stairs=False):
+    #     global robot_command_client 
+    #     global robot_state_client
+    #     frame_name = VISION_FRAME_NAME
+    #     [dx, dy, dyaw] = self.goal
         
-        # heading problem need to be solved, currently no turning head
-        transforms = spot.robot_state_client.get_robot_state().kinematic_state.transforms_snapshot
-        body_tform_goal = math_helpers.SE2Pose(x=dx, y=dy, angle=0)
-        out_tform_body = get_se2_a_tform_b(transforms, frame_name, BODY_FRAME_NAME)
-        out_tform_goal = out_tform_body * body_tform_goal
-        robot_cmd = RobotCommandBuilder.synchro_se2_trajectory_point_command(
-            goal_x=dx, goal_y=dy, goal_heading=dyaw,
-            frame_name=frame_name, params=RobotCommandBuilder.mobility_params(stair_hint=stairs))
-        end_time = 10.0
-        cmd_id = spot.robot_command_client.robot_command(lease=None, command=robot_cmd,
-                                                    end_time_secs=time.time() + end_time)
-        # Wait until the robot has reached the goal.
+    #     # heading problem need to be solved, currently no turning head
+    #     transforms = spot.robot_state_client.get_robot_state().kinematic_state.transforms_snapshot
+    #     body_tform_goal = math_helpers.SE2Pose(x=dx, y=dy, angle=0)
+    #     out_tform_body = get_se2_a_tform_b(transforms, frame_name, BODY_FRAME_NAME)
+    #     out_tform_goal = out_tform_body * body_tform_goal
+    #     robot_cmd = RobotCommandBuilder.synchro_se2_trajectory_point_command(
+    #         goal_x=dx, goal_y=dy, goal_heading=dyaw,
+    #         frame_name=frame_name, params=RobotCommandBuilder.mobility_params(stair_hint=stairs))
+    #     end_time = 10.0
+    #     cmd_id = spot.robot_command_client.robot_command(lease=None, command=robot_cmd,
+    #                                                 end_time_secs=time.time() + end_time)
+    #     # Wait until the robot has reached the goal.
         
-        while dx==self.goal[0] and dy==self.goal[1] and dyaw==self.goal[2]:
-            print("in process")
-            print(f"goal in global move: {dx}, {dy}, {dyaw}")
-            print(f"dx, dy , dyaw in global move: {dx}, {dy}, {dyaw}")
-            feedback = spot.robot_command_client.robot_command_feedback(cmd_id)
-            mobility_feedback = feedback.feedback.synchronized_feedback.mobility_command_feedback
-            if mobility_feedback.status != RobotCommandFeedbackStatus.STATUS_PROCESSING:
-                print("Failed to reach the goal")
-                return False
-            traj_feedback = mobility_feedback.se2_trajectory_feedback
-            if (traj_feedback.status == traj_feedback.STATUS_AT_GOAL and
-                    traj_feedback.body_movement_status == traj_feedback.BODY_STATUS_SETTLED):
-                print("Arrived at the goal.")
-                return True
-            self.rate.sleep()
+    #     while dx==self.goal[0] and dy==self.goal[1] and dyaw==self.goal[2]:
+    #         print(f"goal in global move: {self.goal}")
+    #         print(f"dx, dy , dyaw in global move: {dx}, {dy}, {dyaw}")
+    #         print(f"current position: {self.get_location()}")
+    #         feedback = spot.robot_command_client.robot_command_feedback(cmd_id)
+    #         mobility_feedback = feedback.feedback.synchronized_feedback.mobility_command_feedback
+    #         if mobility_feedback.status != RobotCommandFeedbackStatus.STATUS_PROCESSING:
+    #             print("Failed to reach the goal")
+    #             return False
+    #         traj_feedback = mobility_feedback.se2_trajectory_feedback
+    #         if (traj_feedback.status == traj_feedback.STATUS_AT_GOAL and
+    #                 traj_feedback.body_movement_status == traj_feedback.BODY_STATUS_SETTLED):
+    #             print("Arrived at the goal.")
+    #             return True
+    #         self.rate.sleep()
             
 
-        rospy.logwarn("goal has changed. exit spot local planner loop!")
-        return True
+    #     rospy.logwarn("goal has changed. exit spot local planner loop!")
+    #     return True
 
     def goal_reached_callback(self, status):
-        # Handle the Bool message indicating goal reached status
-        # global reached_goal 
-        # reached_goal = status.data
-        # print(reached_goal)
         pass
 
     def path_callback(self, path_msg):
-        # global reached_goal
-        # print(reached_goal)
-        # if not reached_goal:
-            # spot.stand()
-        x = path_msg.pose.position.x
-        y = path_msg.pose.position.y
-        self.goal = [x, y, 0]
-        # next_angle = rotate_head(pose[0], pose[1], x, y)
-        rospy.loginfo(f"waypoint: x: {x}, y: {y}")
-        # rospy.loginfo(f"pose: x: {pose}, angle: {angle}")
         self.move()
-        # if reached_goal:
-        #     print("reached desination!")
-        #     time.sleep(1.0)
-        #     endSpot()
 
 if __name__ == '__main__':
     while True:

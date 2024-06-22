@@ -61,7 +61,7 @@ if __name__ == '__main__':
         pose_publisher = rospy.Publisher('/spot/pose', PoseStamped, queue_size=10)
         odom_publisher = rospy.Publisher('/spot/odom', Odometry, queue_size=10)
         rospy.init_node('spot_publisher', anonymous=True)
-        rate = rospy.Rate(10)
+        rate = rospy.Rate(30)
         # print("Starting Spot Publisher")
         if spot.connect():
             # offset_matrix = offset()
