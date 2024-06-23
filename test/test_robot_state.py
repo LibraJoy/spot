@@ -93,7 +93,7 @@ def publish_vision(frame_tree_snapshot):
     vision_tform_body = get_vision_tform_body(frame_tree_snapshot)
     print(vision_tform_body)
 
-def publish_odom(frame_tree_snapshot)
+def publish_odom(frame_tree_snapshot):
     odom_tform_body = get_odom_tform_body(frame_tree_snapshot)
     print(odom_tform_body)
 
