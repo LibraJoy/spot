@@ -27,6 +27,7 @@ from geometry_msgs.msg import PoseStamped
 from nav_msgs.msg import Odometry
 from bosdyn.client.graph_nav import GraphNavClient
 from bosdyn.client.math_helpers import Quat, SE3Pose
+from bosdyn.client.frame_helpers import get_vision_tform_body
 from bosdyn.client.robot_state import RobotStateClient
 from bosdyn.client.frame_helpers import ODOM_FRAME_NAME, VISION_FRAME_NAME, BODY_FRAME_NAME, get_se2_a_tform_b
 from bosdyn.client.robot_command import RobotCommandBuilder, RobotCommandClient, blocking_stand, blocking_sit, blocking_selfright
@@ -188,29 +189,29 @@ class spotMoveBase:
         odom_msg.header.stamp = rospy.Time.now()
         odom_msg.header.frame_id = "map"
 
-        position, quaternion,pos_z = self.get_location()
-        qx, qy, qz, qw = quaternion.as_quat()
+        position, quaternion = self.get_location()
+        # qx, qy, qz, qw = quaternion.as_quat()
         # Set position
-        pose_msg.pose.position.x = position[0]
-        pose_msg.pose.position.y = position[1]
-        pose_msg.pose.position.z = -pos_z
+        pose_msg.pose.position.x = position.x
+        pose_msg.pose.position.y = position.y
+        pose_msg.pose.position.z = position.z
 
         # Set orientation
-        pose_msg.pose.orientation.x = qx
-        pose_msg.pose.orientation.y = qy
-        pose_msg.pose.orientation.z = qz
-        pose_msg.pose.orientation.w = qw
+        pose_msg.pose.orientation.x = quaternion.x
+        pose_msg.pose.orientation.y = quaternion.y
+        pose_msg.pose.orientation.z = quaternion.z
+        pose_msg.pose.orientation.w = quaternion.w
 
         # Set odom pos
-        odom_msg.pose.pose.position.x = position[0]
-        odom_msg.pose.pose.position.y = position[1]
-        odom_msg.pose.pose.position.z = -pos_z
+        odom_msg.pose.pose.position.x = position.x
+        odom_msg.pose.pose.position.y = position.y
+        odom_msg.pose.pose.position.z = position.z
 
         # Set odom orientation
-        odom_msg.pose.pose.orientation.x = qx
-        odom_msg.pose.pose.orientation.y = qy
-        odom_msg.pose.pose.orientation.z = qz
-        odom_msg.pose.pose.orientation.w = qw
+        odom_msg.pose.pose.orientation.x = quaternion.x
+        odom_msg.pose.pose.orientation.y = quaternion.y
+        odom_msg.pose.pose.orientation.z = quaternion.z
+        odom_msg.pose.pose.orientation.w = quaternion.w
 
         # rospy.loginfo(pose_msg)
         self.pose_pub.publish(pose_msg)
@@ -231,6 +232,7 @@ class spotMoveBase:
         global robot_state_client
         frame_name = VISION_FRAME_NAME
         [dx, dy, dyaw] = self.goal
+        #dyaw = self.get_desired_heading(dx, dy)
         
         # heading problem need to be solved, currently no turning head
         transforms = spot.robot_state_client.get_robot_state().kinematic_state.transforms_snapshot
@@ -260,32 +262,22 @@ class spotMoveBase:
                 traj_feedback.body_movement_status == traj_feedback.BODY_STATUS_SETTLED):
             print("Arrived at the goal.")
 
+    def get_desired_heading(self, dx, dy):
+        position, quaternion = self.get_location()
+        x = dx - position.x
+        y = dy - position.y
+        dyaw = math.atan2(y, x)
+        return dyaw
+
     def get_location(self):
         global robot_state_client
 
         curr_transforms = spot.robot_state_client.get_robot_state().kinematic_state.transforms_snapshot
-        vision = curr_transforms.child_to_parent_edge_map.get('vision')
-        if vision:
-            # Extract the position data (body frame to odom frame)
-            position_data = vision.parent_tform_child.position
-            
+        vision_tform_body = get_vision_tform_body(curr_transforms)
 
-            # Extract the rotation data
-            rotation_data = vision.parent_tform_child.rotation
-            rot_matrix = R.from_quat([rotation_data.x, rotation_data.y, rotation_data.z, rotation_data.w]).as_matrix() # @ offset_matrix
-            
-            # Inverse
-            rot_matrix = np.linalg.inv(rot_matrix)
-
-            # Output rotation angle and position
-            rot_quaternion = R.from_quat(R.from_matrix(rot_matrix).as_quat())
-
-            # rot_euler = rot_quaternion.as_euler('xyz', degrees=True)
-            pos_xy = np.array([-position_data.x, -position_data.y, 1])
-            position = rot_matrix[:2, :]@pos_xy
-            pos_z = position_data.z
-        # time.sleep(1)
-        return position, rot_quaternion, pos_z
+        position = vision_tform_body.position
+        rot_quaternion = vision_tform_body.rotation
+        return position, rot_quaternion
 
     def action(self):
         spot.stand()
@@ -369,6 +361,7 @@ class spotMoveBase:
             labels_msg.labels.append(label)
 
         self.label_pub.publish(labels_msg)
+
     def goal_reached_callback(self, status):
         pass
 
