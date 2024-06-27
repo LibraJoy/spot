@@ -70,8 +70,10 @@ class spotMoveBase:
         rospy.Timer(rospy.Duration(0.1), self.raw_img_callback)
 
 
-        self.goal = [0., 0. ,0.] # x,y,yaw
+        self.goal = [0., 0., 0.] # x,y,yaw
         self.cmd_id = None
+        self.rotate_cmd_id = None
+        self.rotate_flag = False # rotation needed = True
         self.img = None
         self.img_received = False
 
@@ -228,26 +230,62 @@ class spotMoveBase:
         self.goal = [msg.pose.position.x, msg.pose.position.y, 0]
         rospy.loginfo(f"waypoint: x: {self.goal[0]}, y: {self.goal[1]}")
 
+        # rotation required when a new goal is received
+        self.rotate_flag = True
+
         global robot_command_client 
         global robot_state_client
         frame_name = VISION_FRAME_NAME
         [dx, dy, dyaw] = self.goal
-        #dyaw = self.get_desired_heading(dx, dy)
-        
-        # heading problem need to be solved, currently no turning head
-        transforms = spot.robot_state_client.get_robot_state().kinematic_state.transforms_snapshot
-        body_tform_goal = math_helpers.SE2Pose(x=dx, y=dy, angle=0)
-        out_tform_body = get_se2_a_tform_b(transforms, frame_name, BODY_FRAME_NAME)
-        out_tform_goal = out_tform_body * body_tform_goal
-        robot_cmd = RobotCommandBuilder.synchro_se2_trajectory_point_command(
-            goal_x=dx, goal_y=dy, goal_heading=dyaw,
+
+        # send rotation command
+        current_x, current_y, dyaw = self.get_desired_heading(dx, dy)
+        rotate_cmd = RobotCommandBuilder.synchro_se2_trajectory_point_command(
+            goal_x=current_x, goal_y=current_y, goal_heading=dyaw,
             frame_name=frame_name, params=RobotCommandBuilder.mobility_params(stair_hint=False))
-        end_time = 10.0
-        self.cmd_id = spot.robot_command_client.robot_command(lease=None, command=robot_cmd,
-                                                    end_time_secs=time.time() + end_time)
-        print(f"movement command request sent: {self.goal}")
+        rotate_end_time = 5.0
+        self.rotate_cmd_id = spot.robot_command_client.robot_command(lease=None, command=rotate_cmd,
+                                                    end_time_secs=time.time() + rotate_end_time)
+        print(f"rotation command request sent: {dyaw}")
+
+    def send_move_command(self):
+        global robot_command_client 
+        global robot_state_client
+        frame_name = VISION_FRAME_NAME
+        [dx, dy, dyaw] = self.goal
+
+        # send move command after rotated to desired heading
+        if self.rotate_flag == False:
+            robot_cmd = RobotCommandBuilder.synchro_se2_trajectory_point_command(
+                goal_x=dx, goal_y=dy, goal_heading=0.,
+                frame_name=frame_name, params=RobotCommandBuilder.mobility_params(stair_hint=False))
+            end_time = 10.0
+            self.cmd_id = spot.robot_command_client.robot_command(lease=None, command=robot_cmd,
+                                                        end_time_secs=time.time() + end_time)
+            print(f"movement command request sent: {self.goal}")
 
     def move_status_check_timer_callback(self, event):
+        if not self.rotate_cmd_id and not self.cmd_id:
+            rospy.loginfo("no rotation and movement commands, skip move status check")
+            return
+
+        # check rotation status
+        rot_feedback = spot.robot_command_client.robot_command_feedback(self.rotate_cmd_id)
+        rot_mobility_feedback = rot_feedback.feedback.synchronized_feedback.mobility_command_feedback
+        if rot_mobility_feedback.status != RobotCommandFeedbackStatus.STATUS_PROCESSING:
+            print("Failed to rotate to desired heading")
+        rot_traj_feedback = rot_mobility_feedback.se2_trajectory_feedback
+        if (rot_traj_feedback.status == rot_traj_feedback.STATUS_AT_GOAL and
+                rot_traj_feedback.body_movement_status == rot_traj_feedback.BODY_STATUS_SETTLED):
+            print("Facing the desired heading now.")
+
+            # clear rotation command id
+            self.rotate_flag = False
+            self.rotate_cmd_id = None
+            # send move command
+            self.send_move_command()
+
+        # check movement status
         if not self.cmd_id:
             # rospy.loginfo("no command id, skip move status check")
             return
@@ -264,10 +302,12 @@ class spotMoveBase:
 
     def get_desired_heading(self, dx, dy):
         position, quaternion = self.get_location()
-        x = dx - position.x
-        y = dy - position.y
+        current_x = position.x
+        current_y = position.y
+        x = dx - current_x
+        y = dy - current_y
         dyaw = math.atan2(y, x)
-        return dyaw
+        return current_x, current_y, dyaw
 
     def get_location(self):
         global robot_state_client
