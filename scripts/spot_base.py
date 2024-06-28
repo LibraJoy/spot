@@ -241,7 +241,8 @@ class spotMoveBase:
 
         # send rotation command
         current_x, current_y, self.heading = self.get_desired_heading(dx, dy)
-        dyaw = self.heading
+        if abs(self.heading) > math.pi/4 and abs(self.heading) < 3*math.pi/4: 
+            dyaw = self.heading
         print(f"current rotation goal: {dyaw}")
         rotate_cmd = RobotCommandBuilder.synchro_se2_trajectory_point_command(
             goal_x=current_x, goal_y=current_y, goal_heading=dyaw,
