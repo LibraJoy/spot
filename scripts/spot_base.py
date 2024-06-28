@@ -76,6 +76,7 @@ class spotMoveBase:
         self.rotate_flag = False # rotation needed = True
         self.img = None
         self.img_received = False
+        self.heading = None
 
         # # image service
         self.bridge = CvBridge()
@@ -239,7 +240,9 @@ class spotMoveBase:
         [dx, dy, dyaw] = self.goal
 
         # send rotation command
-        current_x, current_y, dyaw = self.get_desired_heading(dx, dy)
+        current_x, current_y, self.heading = self.get_desired_heading(dx, dy)
+        dyaw = self.heading
+        print(f"current rotation goal: {dyaw}")
         rotate_cmd = RobotCommandBuilder.synchro_se2_trajectory_point_command(
             goal_x=current_x, goal_y=current_y, goal_heading=dyaw,
             frame_name=frame_name, params=RobotCommandBuilder.mobility_params(stair_hint=False))
@@ -257,7 +260,7 @@ class spotMoveBase:
         # send move command after rotated to desired heading
         if self.rotate_flag == False:
             robot_cmd = RobotCommandBuilder.synchro_se2_trajectory_point_command(
-                goal_x=dx, goal_y=dy, goal_heading=0.,
+                goal_x=dx, goal_y=dy, goal_heading=self.heading,
                 frame_name=frame_name, params=RobotCommandBuilder.mobility_params(stair_hint=False))
             end_time = 10.0
             self.cmd_id = spot.robot_command_client.robot_command(lease=None, command=robot_cmd,
@@ -281,7 +284,6 @@ class spotMoveBase:
 
             # clear rotation command id
             self.rotate_flag = False
-            self.rotate_cmd_id = None
             # send move command
             self.send_move_command()
 
