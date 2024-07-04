@@ -1,14 +1,4 @@
 #!/bin/bash
-# Function to handle SIGINT (Ctrl+C) signal
-
-cleanup() {
-    echo "SIGINT received, terminating processes..."
-    kill $KEYBOARD_CONTROL_PID
-    kill $ISAAC_SIM_PID
-    exit 0
-}
-# Trap SIGINT and call the cleanup function
-trap 'cleanup' SIGINT
 
 # Source environment scripts
 source ~/.bashrc
