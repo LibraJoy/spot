@@ -33,8 +33,9 @@ class WebRTCClient:
 
     def __init__(self, hostname, sdp_port, sdp_filename, cam_ssl_cert, token, rtc_config,
                  media_recorder=None, recorder_type=None):
+        print("before RTCPeerConnection")
         self.pc = RTCPeerConnection(configuration=rtc_config)
-
+        print("after RTCPeerConnection")
         self.video_frame_queue = asyncio.Queue()
         self.audio_frame_queue = asyncio.Queue()
 
@@ -61,6 +62,7 @@ class WebRTCClient:
         response = requests.get(server_url, verify=self.cam_ssl_cert, headers=headers,
                                 timeout=DEFAULT_WEB_REQUEST_TIMEOUT)
         result = response.json()
+        print(result)
         return result['id'], base64.b64decode(result['sdp']).decode()
 
     def send_sdp_answer_to_spot_cam(self, token, offer_id, sdp_answer):

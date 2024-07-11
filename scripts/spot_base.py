@@ -58,8 +58,8 @@ class spotMoveBase:
         self.rate = rospy.Rate(15)
 
         # ROS
-        rospy.Subscriber("/spot/waypoint", PoseStamped, self.goal_pose_sub_callback)
-        #rospy.Subscriber("/move_base_simple/goal", PoseStamped, self.goal_pose_sub_callback)
+        #rospy.Subscriber("/spot/waypoint", PoseStamped, self.goal_pose_sub_callback)
+        rospy.Subscriber("/move_base_simple/goal", PoseStamped, self.goal_pose_sub_callback)
         self.pose_pub = rospy.Publisher('/spot/pose', PoseStamped, queue_size=10)
         self.odom_pub = rospy.Publisher('/spot/odom', Odometry, queue_size=10)
         self.img_pub = rospy.Publisher('/spot_image', Image, queue_size=10)
@@ -68,7 +68,7 @@ class spotMoveBase:
         self.label_pub = rospy.Publisher('yolo_label', SemanticLabel, queue_size=10)
         rospy.Timer(rospy.Duration(0.03), self.odom_pub_timer_callback)
         rospy.Timer(rospy.Duration(0.05), self.move_status_check_timer_callback)
-        rospy.Timer(rospy.Duration(0.1), self.raw_img_callback)
+        
 
 
         self.goal = [0., 0., 0.] # x,y,yaw
@@ -79,6 +79,18 @@ class spotMoveBase:
         self.img_received = False
         self.heading = None
 
+        # # yolo
+        rospack = rospkg.RosPack()
+        pkg_path = rospack.get_path('spot')
+        # model_path = os.path.join(pkg_path, 'src/spot', 'yolov7.pt')
+        model_path = os.path.join(pkg_path, 'src/spot', 'best.7.10.pt')
+        device = 'cpu'
+        if torch.cuda.is_available():
+            device = 'cuda:0'
+        torch.device(device)
+        # model = yolov7.load('yolov7.pt') # ... COCO
+
+        self.model = yolov7.load(model_path)
         # # image service
         self.bridge = CvBridge()
         spot.set_screen('pano_full')
@@ -88,17 +100,10 @@ class spotMoveBase:
         # self.img_getter_thread = threading.Thread(target=self.image_getter)
         # self.img_getter_thread.start()
 
-        # # yolo
-        # rospack = rospkg.RosPack()
-        # pkg_path = rospack.get_path('spot')
-        # # model_path = os.path.join(pkg_path, 'src/spot', 'yolov7.pt')
-        # model_path = os.path.join(pkg_path, 'src/spot', 'yolov7-tiny.pt')
-        # device = 'cpu'
-        # if torch.cuda.is_available():
-        #     device = 'cuda:0'
-        # torch.device(device)
-        # # model = yolov7.load('yolov7.pt') # ... COCO
-        # self.model = yolov7.load(model_path)
+        rospy.Timer(rospy.Duration(0.1), self.raw_img_callback)
+        rospy.Timer(rospy.Duration(0.3), self.yolo_callback)
+
+        
 
     def startMonitor(self, hostname, robot, process=spot_webrtc.captureT):
         global webrtc_thread
@@ -134,9 +139,10 @@ class spotMoveBase:
                 break
             elif spot_webrtc.frameCount == 0:
                 tm1 = time.time()
-                print("-------------------------- frame count = 0 ----------------------")
+                # print("-------------------------- frame count = 0 ----------------------")
                 if spot_webrtc.frameR is None:
-                    print("-------------------- NO FRAME RECEIVED FROM QUEUE --------------------")
+                    # print("-------------------- NO FRAME RECEIVED FROM QUEUE --------------------")
+                    pass
             else:
                 print("-----------------------IMAGE QUEUE READY-----------------------")
                 self.img_received = True
@@ -146,7 +152,7 @@ class spotMoveBase:
     def image_getter(self):
         while not rospy.is_shutdown():
             # print("image getter")
-            self.rgb = spot_webrtc.rgbImage.copy()
+            # self.rgb = spot_webrtc.rgbImage.copy()
             self.img = spot_webrtc.cvImage.copy()
 
 
@@ -179,9 +185,34 @@ class spotMoveBase:
         # publish ros image
         # print("publish ros img")
         if self.img_received:
-            self.rgb = spot_webrtc.rgbImage.copy()
+            # self.rgb = spot_webrtc.rgbImage.copy()
             self.img = spot_webrtc.cvImage.copy()
             self.publish_image_to_ros(self.img)
+
+
+    def yolo_callback(self, event):
+        self.rgb = spot_webrtc.rgbImage.copy()
+        results = self.model(self.rgb)
+        p = results.pred[0]
+        box = p[:,:4] # bbox start and end points
+        conf = p[:,4] # condidence
+        cat = p[:,5] # category id
+        tl = 3
+        self.rgb = cv2.cvtColor(self.rgb, cv2.COLOR_RGB2BGR)
+        for i in range(len(box)):
+            label = '{} {:.1f}%'.format(self.model.names[int(cat[i])], conf[i]*100.0)
+            # print(label)
+            color = [random.randint(0, 255) for _ in range(3)]
+            c1, c2 = (int(box[i][0]), int(box[i][1])), (int(box[i][2]), int(box[i][3]))
+            cv2.rectangle(self.rgb, c1, c2, color, tl, lineType=cv2.LINE_AA) # object bounding box
+            tf = max(tl -1, 1)
+            t_size = cv2.getTextSize(label, 0, fontScale=tl / 3, thickness=tf)[0]
+            c2 = c1[0] + t_size[0], c1[1] - t_size[1] - 3
+            cv2.rectangle(self.rgb, c1, c2, color, -1, cv2.LINE_AA)  # filled box for labels
+            cv2.putText(self.rgb, label, (c1[0], c1[1] - 2), 0, tl / 3, [225, 255, 255], thickness=tf, lineType=cv2.LINE_AA)
+        
+        self.publish_yolo_img_to_ros(self.rgb)
+        self.publish_bbox(box, cat, conf)
 
     def odom_pub_timer_callback(self, event):
         start_time = rospy.Time.now()
@@ -283,7 +314,7 @@ class spotMoveBase:
 
     def move_status_check_timer_callback(self, event):
         if not self.rotate_cmd_id and not self.cmd_id:
-            rospy.loginfo("no rotation and movement commands, skip move status check")
+            # rospy.loginfo("no rotation and movement commands, skip move status check")
             return
         elif self.rotate_cmd_id:
                 print(f"check rotation command id {self.rotate_cmd_id}")
