@@ -58,8 +58,8 @@ class spotMoveBase:
         self.rate = rospy.Rate(15)
 
         # ROS
-        #rospy.Subscriber("/spot/waypoint", PoseStamped, self.goal_pose_sub_callback)
-        rospy.Subscriber("/move_base_simple/goal", PoseStamped, self.goal_pose_sub_callback)
+        rospy.Subscriber("/spot/waypoint", PoseStamped, self.goal_pose_sub_callback)
+        # rospy.Subscriber("/move_base_simple/goal", PoseStamped, self.goal_pose_sub_callback)
         self.pose_pub = rospy.Publisher('/spot/pose', PoseStamped, queue_size=10)
         self.odom_pub = rospy.Publisher('/spot/odom', Odometry, queue_size=10)
         self.img_pub = rospy.Publisher('/spot_image', Image, queue_size=10)
@@ -256,25 +256,31 @@ class spotMoveBase:
         # print(f"odom pub time: {rospy.Time.now() - start_time}")
 
     def goal_pose_sub_callback(self, msg):
-        if self.goal[0] == msg.pose.position.x and self.goal[1] == msg.pose.position.y:
-            rospy.loginfo("subscribed goal has not changed, do not upddate command")
-            return
-
-        self.goal = [msg.pose.position.x, msg.pose.position.y, 0]
-        rospy.loginfo(f"waypoint: x: {self.goal[0]}, y: {self.goal[1]}")
-
-
         global robot_command_client 
         global robot_state_client
         frame_name = VISION_FRAME_NAME
+        
+        if self.goal[0] == msg.pose.position.x and self.goal[1] == msg.pose.position.y:
+            rospy.loginfo("subscribed goal has not changed, do not upddate command")
+            return
+        #  Check distance between current position and goal
+        self.goal = [msg.pose.position.x, msg.pose.position.y, 0]
         [dx, dy, dyaw] = self.goal
-
-        # send rotation command
         current_heading, current_x, current_y, self.heading = self.get_desired_heading(dx, dy)
+        
+        if math.sqrt((current_x - self.goal[0])**2 + (current_y - self.goal[1])**2) < 0.3:
+            rospy.loginfo("goal is too close to current position, skip move command")
+            return
+        
+        rospy.loginfo(f"waypoint: x: {self.goal[0]}, y: {self.goal[1]}")
+
+        
+        # send rotation command
+        
         # if abs(self.heading) > math.pi/4 and abs(self.heading) < math.pi/2: 
         #     dyaw = self.heading
         dyaw = self.heading
-        if current_heading == self.heading:
+        if abs(current_heading - self.heading) < 0.2:
             # Need to be check #
             # self.rotate_cmd_id = None
             # self.cmd_id = None
