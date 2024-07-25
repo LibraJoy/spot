@@ -22,6 +22,7 @@ class yolo_seg:
         self.img_sub = rospy.Subscriber('spot_image', Image, self.image_callback)
         self.yolo_vis_pub = rospy.Publisher('yolo/visualization', Image, queue_size=10)
         self.yolo_detect_pub = rospy.Publisher('yolo/detection', Detection2DArray, queue_size=10)
+        self.yolo_mask_pub = rospy.Publisher('yolo/mask', Image, queue_size=10)
         self.img_data = None
 
     def plot(self, results):
@@ -47,12 +48,15 @@ class yolo_seg:
             self.yolo_vis_pub.publish(ros_img)
 
             # publish detection results
-            detection = Detection2D()
+            
             if r.boxes.cls.shape[0] == 0:
                 rospy.logwarn("No object detected")
                 return
             # print("r.boxes.cls.shape: ", r.boxes.cls.shape)
+            # make an empty mask
+            mask_base = np.zeros((self.h_org, self.w_org), dtype=np.uint8)
             for j in range(r.boxes.cls.shape[0]): # number of bounding boxes in current frame
+                detection = Detection2D()
                 result = ObjectHypothesisWithPose()
                 result.id = int(r.boxes.cls[j])
                 result.score = float(r.boxes.conf[j])
@@ -63,14 +67,23 @@ class yolo_seg:
                 detection.bbox.size_y = r.boxes.xywh[j][3]
                 mask = r.masks.data[j,:,:]
                 mask = mask.cpu().numpy().astype(np.uint8)
+                # any pixel is not 0 in either mask_base or mask, set it to 1. else set it to 0
                 mask = cv2.resize(mask, (self.w_org, self.h_org))
+                # if result.id == 56:
+                mask_base = np.where(mask_base + mask > 0, 1, 0)
                 mask = mask * 255
                 # import pdb; pdb.set_trace()
                 mask = PIL.Image.fromarray(mask)
                 mask = self.bridge.cv2_to_imgmsg(np.array(mask), encoding="mono8")
                 detection.source_img = mask
+                detection_array.detections.append(detection)
+            
+            mask_base = (mask_base * 255).astype(np.uint8)
+            mask_base = PIL.Image.fromarray(mask_base)
+            mask_base = self.bridge.cv2_to_imgmsg(np.array(mask_base), encoding="mono8")
+            self.yolo_mask_pub.publish(mask_base)
 
-            detection_array.detections.append(detection)
+            
             self.yolo_detect_pub.publish(detection_array)
         
  
