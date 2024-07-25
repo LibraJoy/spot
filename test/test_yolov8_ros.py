@@ -14,8 +14,8 @@ from vision_msgs.msg import Detection2DArray, Detection2D, BoundingBox2D, Object
 # import vision_msgs.msg
 class yolo_seg:
     def __init__(self):
-        self.w_scaled = 640
-        self.h_scaled = 640
+        self.w_org = 1280
+        self.h_org = 720
         self.model = YOLO("/home/xiaoyang/Downloads/yolov8m-seg.pt")
         self.img_resized = None
         self.bridge = CvBridge()
@@ -38,26 +38,38 @@ class yolo_seg:
 
     def publish_results(self, results):
         detection_array = Detection2DArray()
+        detection_array.header.stamp = self.img_data.header.stamp
+        detection_array.header.frame_id = "yolo_result"
         for i, r in enumerate(results): # i always 0
             # publish visualizaiton image
             im_bgr = r.plot()  # BGR-order numpy array
-            cv_img = cv2.cvtColor(np.array(im_bgr), cv2.COLOR_RGB2BGR)
-            ros_img = self.bridge.cv2_to_imgmsg(cv_img, encoding="bgr8")
+            ros_img = self.bridge.cv2_to_imgmsg(im_bgr, encoding="bgr8")
             self.yolo_vis_pub.publish(ros_img)
 
             # publish detection results
             detection = Detection2D()
+            if r.boxes.cls.shape[0] == 0:
+                rospy.logwarn("No object detected")
+                return
+            # print("r.boxes.cls.shape: ", r.boxes.cls.shape)
             for j in range(r.boxes.cls.shape[0]): # number of bounding boxes in current frame
-                detection.header.stamp = self.img_data.header.stamp
-                detection.header.frame_id = "yolo_result"
                 result = ObjectHypothesisWithPose()
                 result.id = int(r.boxes.cls[j])
-                result.score = int(r.boxes.conf[j])
+                result.score = float(r.boxes.conf[j])
                 detection.results.append(result)
                 detection.bbox.center.x = r.boxes.xywh[j][0]
                 detection.bbox.center.y = r.boxes.xywh[j][1]
                 detection.bbox.size_x = r.boxes.xywh[j][2]
                 detection.bbox.size_y = r.boxes.xywh[j][3]
+                mask = r.masks.data[j,:,:]
+                mask = mask.cpu().numpy().astype(np.uint8)
+                mask = cv2.resize(mask, (self.w_org, self.h_org))
+                mask = mask * 255
+                # import pdb; pdb.set_trace()
+                mask = PIL.Image.fromarray(mask)
+                mask = self.bridge.cv2_to_imgmsg(np.array(mask), encoding="mono8")
+                detection.source_img = mask
+
             detection_array.detections.append(detection)
             self.yolo_detect_pub.publish(detection_array)
         
