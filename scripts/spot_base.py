@@ -32,6 +32,8 @@ from bosdyn.client.robot_state import RobotStateClient
 from bosdyn.client.frame_helpers import ODOM_FRAME_NAME, VISION_FRAME_NAME, BODY_FRAME_NAME, get_se2_a_tform_b
 from bosdyn.client.robot_command import RobotCommandBuilder, RobotCommandClient, blocking_stand, blocking_sit, blocking_selfright
 from bosdyn.api.basic_command_pb2 import RobotCommandFeedbackStatus
+from bosdyn.api.geometry_pb2 import SE2Velocity, SE2VelocityLimit, Vec2
+from bosdyn.api.spot import robot_command_pb2 as spot_command_pb2
 from scipy.spatial.transform import Rotation as R
 import numpy as np
 import torch
@@ -58,6 +60,7 @@ class spotMoveBase:
         self.rate = rospy.Rate(15)
 
         # ROS
+        self.goal = [0., 0., 0.] # x,y,yaw
         rospy.Subscriber("/spot/waypoint", PoseStamped, self.goal_pose_sub_callback)
         # rospy.Subscriber("/move_base_simple/goal", PoseStamped, self.goal_pose_sub_callback)
         self.pose_pub = rospy.Publisher('/spot/pose', PoseStamped, queue_size=10)
@@ -71,13 +74,13 @@ class spotMoveBase:
         
 
 
-        self.goal = [0., 0., 0.] # x,y,yaw
         self.cmd_id = None
         self.rotate_cmd_id = None
         self.rotate_flag = False # rotation needed = True
         self.img = None
         self.img_received = False
         self.heading = None
+        self.mobility_params = self.set_mobility_params(0.75, 0.75, 0.6, -0.75, -0.75, -0.6)
 
         # # yolo
         rospack = rospkg.RosPack()
@@ -88,6 +91,7 @@ class spotMoveBase:
         if torch.cuda.is_available():
             device = 'cuda:0'
         torch.device(device)
+        print(f"device: {device}")
         # model = yolov7.load('yolov7.pt') # ... COCO
 
         self.model = yolov7.load(model_path)
@@ -101,9 +105,12 @@ class spotMoveBase:
         # self.img_getter_thread.start()
 
         rospy.Timer(rospy.Duration(0.1), self.raw_img_callback)
-        rospy.Timer(rospy.Duration(0.3), self.yolo_callback)
+        # rospy.Timer(rospy.Duration(0.3), self.yolo_callback)
 
-        
+    def set_mobility_params(self, max_x_vel, max_y_vel, max_yaw_vel, min_x_vel, min_y_vel, min_yaw_vel):
+        speed_limit = SE2VelocityLimit(max_vel=SE2Velocity(linear=Vec2(x=max_x_vel, y=max_y_vel), angular=max_yaw_vel), min_vel=SE2Velocity(linear=Vec2(x=min_x_vel, y=min_y_vel), angular=min_yaw_vel))
+        mobility_params = spot_command_pb2.MobilityParams(vel_limit=speed_limit)
+        return mobility_params
 
     def startMonitor(self, hostname, robot, process=spot_webrtc.captureT):
         global webrtc_thread
@@ -188,10 +195,16 @@ class spotMoveBase:
             # self.rgb = spot_webrtc.rgbImage.copy()
             self.img = spot_webrtc.cvImage.copy()
             self.publish_image_to_ros(self.img)
+            self.img_yolo = spot_webrtc.rgbImage.copy()
+            # convert img_yolo to torch and move to cuda
+            # self.img_yolo = cv2.cvtColor(self.img_yolo, cv2.COLOR_RGB2BGR)
+            # self.img_yolo = torch.from_numpy(self.img_yolo).unsqueeze(0).float().to('cuda')
 
 
     def yolo_callback(self, event):
         self.rgb = spot_webrtc.rgbImage.copy()
+        # print(self.rgb.shape)
+        # print(self.img_yolo.shape)
         results = self.model(self.rgb)
         p = results.pred[0]
         box = p[:,:4] # bbox start and end points
@@ -295,7 +308,8 @@ class spotMoveBase:
             self.rotate_flag = True
             rotate_cmd = RobotCommandBuilder.synchro_se2_trajectory_point_command(
                 goal_x=current_x, goal_y=current_y, goal_heading=dyaw,
-                frame_name=frame_name, params=RobotCommandBuilder.mobility_params(stair_hint=False))
+                frame_name=frame_name, params=self.mobility_params)
+                # frame_name=frame_name, params=RobotCommandBuilder.mobility_params(stair_hint=False))
             rotate_end_time = 10.0
             self.rotate_cmd_id = spot.robot_command_client.robot_command(lease=None, command=rotate_cmd,
                                                         end_time_secs=time.time() + rotate_end_time)
@@ -312,8 +326,8 @@ class spotMoveBase:
         if self.rotate_flag == False:
             robot_cmd = RobotCommandBuilder.synchro_se2_trajectory_point_command(
                 goal_x=dx, goal_y=dy, goal_heading=dyaw,
-                frame_name=frame_name, params=RobotCommandBuilder.mobility_params(stair_hint=False))
-            end_time = 10.0
+                frame_name=frame_name, params=self.mobility_params)
+            end_time = 20.0
             self.cmd_id = spot.robot_command_client.robot_command(lease=None, command=robot_cmd,
                                                         end_time_secs=time.time() + end_time)
             print(f"movement command request sent: {self.goal}") 
@@ -339,6 +353,13 @@ class spotMoveBase:
             if rot_mobility_feedback.status != RobotCommandFeedbackStatus.STATUS_PROCESSING:
                 print(f"current rotation command id {self.rotate_cmd_id}, status: {rot_mobility_feedback.status}")
                 print("Failed to rotate to desired heading")
+                if rot_mobility_feedback.status == 3:
+                    rospy.logwarn("Rotation command time out, send move command")
+                    # clear rotation command id
+                    self.rotate_flag = False
+                    self.rotate_cmd_id = None
+                    # send move command
+                    self.send_move_command()
             else:
                 print(f"executing rotation command, final_goal_status : {rot_traj_feedback.final_goal_status}")
             
@@ -365,10 +386,8 @@ class spotMoveBase:
             if mobility_feedback.status != RobotCommandFeedbackStatus.STATUS_PROCESSING:
                 print(f"current move command id {self.cmd_id}, status: {mobility_feedback.status}")
                 print("Failed to reach the goal")
-
             else:
-                print("executing move command")
-                print(f"current move command id {self.cmd_id}, status: {traj_feedback.final_goal_status}")
+                print(f"executing move command, final_goal_status: {traj_feedback.final_goal_status}")
             
             if (traj_feedback.status == traj_feedback.STATUS_AT_GOAL and
                     traj_feedback.body_movement_status == traj_feedback.BODY_STATUS_SETTLED):
@@ -385,12 +404,17 @@ class spotMoveBase:
         x = dx - current_x
         y = dy - current_y
         goal_yaw = math.atan2(y, x)
+        print(f"current yaw: {current_yaw}, goal yaw: {goal_yaw}")
 
         diff = abs(goal_yaw - current_yaw)
+        if diff > math.pi:
+            diff = 2*math.pi - diff
+        print(f"diff: {diff}")
         if math.pi/8 < diff < 3*math.pi/4:
             dyaw = goal_yaw
         else:
             dyaw = current_yaw
+        print(f"desired heading: {dyaw}")
         return current_yaw, current_x, current_y, dyaw
 
     def get_location(self):
