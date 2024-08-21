@@ -24,6 +24,7 @@ class yolo_seg:
         self.yolo_detect_pub = rospy.Publisher('yolo/detection', Detection2DArray, queue_size=10)
         self.yolo_mask_pub = rospy.Publisher('yolo/mask', Image, queue_size=10)
         self.img_data = None
+        self.obj_label_of_interest = [56, 57, 60, 62]
 
     def plot(self, results):
         for i, r in enumerate(results):
@@ -50,12 +51,13 @@ class yolo_seg:
             # publish detection results
             
             if r.boxes.cls.shape[0] == 0:
-                rospy.logwarn("No object detected")
                 return
             # print("r.boxes.cls.shape: ", r.boxes.cls.shape)
             # make an empty mask
             mask_base = np.zeros((self.h_org, self.w_org), dtype=np.uint8)
             for j in range(r.boxes.cls.shape[0]): # number of bounding boxes in current frame
+                if int(r.boxes.cls[j]) not in self.obj_label_of_interest:
+                    continue
                 detection = Detection2D()
                 result = ObjectHypothesisWithPose()
                 result.id = int(r.boxes.cls[j])
@@ -95,26 +97,9 @@ class yolo_seg:
         except CvBridgeError as e:
             print(e)
 
-        # self.img_resized = cv2.resize(cv_img, (self.w_scaled, self.h_scaled))
-
-        # # put model and image to gpu
-        # self.model.to("cuda")
-
-        # # Convert the OpenCV image to a PyTorch tensor
-        # tensor_img = torch.from_numpy(self.img_resized).float().div(255).permute(2, 0, 1).unsqueeze(0)
-
-        # # Move the tensor to the GPU
-        # tensor_img = tensor_img.to("cuda")
-
         results = self.model.predict(source=cv_img, save=False, save_txt=False, stream=True, verbose=False)
         # self.plot(results)
         self.publish_results(results)
-
-        # try:
-        #     ros_img = self.bridge.cv2_to_imgmsg(cv_img, encoding="bgr8")
-        #     self.yolo_img_pub.publish(ros_img)
-        # except CvBridgeError as e:
-        #     print(e)
 
     # make boundinb box and semantic mask msg from yolo results->Detection2DArray
     def make_msg(self, results):
