@@ -16,7 +16,7 @@ class yolo_seg:
     def __init__(self):
         self.w_org = 1280
         self.h_org = 720
-        self.model = YOLO("/home/xiaoyang/Downloads/yolov8m-seg.pt")
+        self.model = YOLO("/home/cerlab/spot_ws/yolov8m-seg.pt")
         self.img_resized = None
         self.bridge = CvBridge()
         self.img_sub = rospy.Subscriber('spot_image', Image, self.image_callback)
