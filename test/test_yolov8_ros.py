@@ -1,4 +1,4 @@
-
+#!/usr/bin/env python3
 import PIL.Image
 import cv2
 import PIL

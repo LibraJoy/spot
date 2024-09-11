@@ -7454,3 +7454,207 @@ INFO:CerlabSpotSDK.192.168.50.3:Powering on robot... This may take several secon
 INFO:CerlabSpotSDK.192.168.50.3:Robot powered on.
 INFO:CerlabSpotSDK.192.168.50.3:Set robot to accept command...
 INFO:root:Lease check-in stopped
+DEBUG:matplotlib:matplotlib data path: /home/cerlab/.local/lib/python3.8/site-packages/matplotlib/mpl-data
+DEBUG:matplotlib:CONFIGDIR=/home/cerlab/.config/matplotlib
+DEBUG:matplotlib:interactive is False
+DEBUG:matplotlib:platform is linux
+DEBUG:matplotlib:CACHEDIR=/home/cerlab/.cache/matplotlib
+DEBUG:matplotlib.font_manager:Using fontManager instance from /home/cerlab/.cache/matplotlib/fontlist-v330.json
+INFO:CerlabSpotSDK.192.168.50.3:ptz
+INFO:CerlabSpotSDK.192.168.50.3:waiting for time sync...
+INFO:CerlabSpotSDK.192.168.50.3:sync established.
+INFO:CerlabSpotSDK.192.168.50.3:Acquiring lease...
+INFO:CerlabSpotSDK.192.168.50.3:Setting up clients...
+INFO:CerlabSpotSDK.192.168.50.3:Ready to power on robot.
+INFO:root:Starting lease check-in
+INFO:CerlabSpotSDK.192.168.50.3:Powering on robot... This may take several seconds.
+INFO:CerlabSpotSDK.192.168.50.3:Robot powered on.
+INFO:CerlabSpotSDK.192.168.50.3:Set robot to accept command...
+INFO:root:Lease check-in stopped
+DEBUG:matplotlib:matplotlib data path: /home/cerlab/.local/lib/python3.8/site-packages/matplotlib/mpl-data
+DEBUG:matplotlib:CONFIGDIR=/home/cerlab/.config/matplotlib
+DEBUG:matplotlib:interactive is False
+DEBUG:matplotlib:platform is linux
+DEBUG:matplotlib:CACHEDIR=/home/cerlab/.cache/matplotlib
+DEBUG:matplotlib.font_manager:Using fontManager instance from /home/cerlab/.cache/matplotlib/fontlist-v330.json
+INFO:CerlabSpotSDK.192.168.50.3:ptz
+INFO:CerlabSpotSDK.192.168.50.3:waiting for time sync...
+INFO:CerlabSpotSDK.192.168.50.3:sync established.
+INFO:CerlabSpotSDK.192.168.50.3:Acquiring lease...
+INFO:CerlabSpotSDK.192.168.50.3:Setting up clients...
+INFO:CerlabSpotSDK.192.168.50.3:Ready to power on robot.
+INFO:root:Starting lease check-in
+INFO:CerlabSpotSDK.192.168.50.3:Powering on robot... This may take several seconds.
+INFO:CerlabSpotSDK.192.168.50.3:Robot powered on.
+INFO:CerlabSpotSDK.192.168.50.3:Set robot to accept command...
+INFO:root:Lease check-in stopped
+DEBUG:matplotlib:matplotlib data path: /home/cerlab/.local/lib/python3.8/site-packages/matplotlib/mpl-data
+DEBUG:matplotlib:CONFIGDIR=/home/cerlab/.config/matplotlib
+DEBUG:matplotlib:interactive is False
+DEBUG:matplotlib:platform is linux
+DEBUG:matplotlib:CACHEDIR=/home/cerlab/.cache/matplotlib
+DEBUG:matplotlib.font_manager:Using fontManager instance from /home/cerlab/.cache/matplotlib/fontlist-v330.json
+INFO:CerlabSpotSDK.192.168.50.3:ptz
+INFO:CerlabSpotSDK.192.168.50.3:waiting for time sync...
+INFO:CerlabSpotSDK.192.168.50.3:sync established.
+INFO:CerlabSpotSDK.192.168.50.3:Acquiring lease...
+INFO:CerlabSpotSDK.192.168.50.3:Setting up clients...
+INFO:CerlabSpotSDK.192.168.50.3:Ready to power on robot.
+INFO:root:Starting lease check-in
+INFO:CerlabSpotSDK.192.168.50.3:Powering on robot... This may take several seconds.
+INFO:CerlabSpotSDK.192.168.50.3:Robot powered on.
+INFO:CerlabSpotSDK.192.168.50.3:Set robot to accept command...
+INFO:root:Lease check-in stopped
+DEBUG:matplotlib:matplotlib data path: /home/cerlab/.local/lib/python3.8/site-packages/matplotlib/mpl-data
+DEBUG:matplotlib:CONFIGDIR=/home/cerlab/.config/matplotlib
+DEBUG:matplotlib:interactive is False
+DEBUG:matplotlib:platform is linux
+DEBUG:matplotlib:CACHEDIR=/home/cerlab/.cache/matplotlib
+DEBUG:matplotlib.font_manager:Using fontManager instance from /home/cerlab/.cache/matplotlib/fontlist-v330.json
+INFO:CerlabSpotSDK.192.168.50.3:ptz
+INFO:CerlabSpotSDK.192.168.50.3:waiting for time sync...
+INFO:CerlabSpotSDK.192.168.50.3:sync established.
+INFO:CerlabSpotSDK.192.168.50.3:Acquiring lease...
+INFO:CerlabSpotSDK.192.168.50.3:Setting up clients...
+INFO:CerlabSpotSDK.192.168.50.3:Ready to power on robot.
+INFO:root:Starting lease check-in
+INFO:CerlabSpotSDK.192.168.50.3:Powering on robot... This may take several seconds.
+INFO:CerlabSpotSDK.192.168.50.3:Robot powered on.
+INFO:CerlabSpotSDK.192.168.50.3:Set robot to accept command...
+INFO:root:Lease check-in stopped
+DEBUG:matplotlib:matplotlib data path: /home/cerlab/.local/lib/python3.8/site-packages/matplotlib/mpl-data
+DEBUG:matplotlib:CONFIGDIR=/home/cerlab/.config/matplotlib
+DEBUG:matplotlib:interactive is False
+DEBUG:matplotlib:platform is linux
+DEBUG:matplotlib:CACHEDIR=/home/cerlab/.cache/matplotlib
+DEBUG:matplotlib.font_manager:Using fontManager instance from /home/cerlab/.cache/matplotlib/fontlist-v330.json
+INFO:CerlabSpotSDK.192.168.50.3:ptz
+INFO:CerlabSpotSDK.192.168.50.3:waiting for time sync...
+INFO:CerlabSpotSDK.192.168.50.3:sync established.
+INFO:CerlabSpotSDK.192.168.50.3:Acquiring lease...
+INFO:CerlabSpotSDK.192.168.50.3:Setting up clients...
+INFO:CerlabSpotSDK.192.168.50.3:Ready to power on robot.
+INFO:root:Starting lease check-in
+INFO:CerlabSpotSDK.192.168.50.3:Powering on robot... This may take several seconds.
+INFO:CerlabSpotSDK.192.168.50.3:Robot powered on.
+INFO:CerlabSpotSDK.192.168.50.3:Set robot to accept command...
+INFO:root:Lease check-in stopped
+DEBUG:matplotlib:matplotlib data path: /home/cerlab/.local/lib/python3.8/site-packages/matplotlib/mpl-data
+DEBUG:matplotlib:CONFIGDIR=/home/cerlab/.config/matplotlib
+DEBUG:matplotlib:interactive is False
+DEBUG:matplotlib:platform is linux
+DEBUG:matplotlib:CACHEDIR=/home/cerlab/.cache/matplotlib
+DEBUG:matplotlib.font_manager:Using fontManager instance from /home/cerlab/.cache/matplotlib/fontlist-v330.json
+INFO:CerlabSpotSDK.192.168.50.3:ptz
+INFO:CerlabSpotSDK.192.168.50.3:waiting for time sync...
+INFO:CerlabSpotSDK.192.168.50.3:sync established.
+INFO:CerlabSpotSDK.192.168.50.3:Acquiring lease...
+INFO:CerlabSpotSDK.192.168.50.3:Setting up clients...
+INFO:CerlabSpotSDK.192.168.50.3:Ready to power on robot.
+INFO:root:Starting lease check-in
+INFO:CerlabSpotSDK.192.168.50.3:Powering on robot... This may take several seconds.
+INFO:CerlabSpotSDK.192.168.50.3:Robot powered on.
+INFO:CerlabSpotSDK.192.168.50.3:Set robot to accept command...
+INFO:root:Lease check-in stopped
+DEBUG:matplotlib:matplotlib data path: /home/cerlab/.local/lib/python3.8/site-packages/matplotlib/mpl-data
+DEBUG:matplotlib:CONFIGDIR=/home/cerlab/.config/matplotlib
+DEBUG:matplotlib:interactive is False
+DEBUG:matplotlib:platform is linux
+DEBUG:matplotlib:CACHEDIR=/home/cerlab/.cache/matplotlib
+DEBUG:matplotlib.font_manager:Using fontManager instance from /home/cerlab/.cache/matplotlib/fontlist-v330.json
+INFO:CerlabSpotSDK.192.168.50.3:ptz
+INFO:CerlabSpotSDK.192.168.50.3:waiting for time sync...
+INFO:CerlabSpotSDK.192.168.50.3:sync established.
+INFO:CerlabSpotSDK.192.168.50.3:Acquiring lease...
+INFO:CerlabSpotSDK.192.168.50.3:Setting up clients...
+INFO:CerlabSpotSDK.192.168.50.3:Ready to power on robot.
+INFO:root:Starting lease check-in
+INFO:CerlabSpotSDK.192.168.50.3:Powering on robot... This may take several seconds.
+INFO:CerlabSpotSDK.192.168.50.3:Robot powered on.
+INFO:CerlabSpotSDK.192.168.50.3:Set robot to accept command...
+INFO:root:Lease check-in stopped
+DEBUG:matplotlib:matplotlib data path: /home/cerlab/.local/lib/python3.8/site-packages/matplotlib/mpl-data
+DEBUG:matplotlib:CONFIGDIR=/home/cerlab/.config/matplotlib
+DEBUG:matplotlib:interactive is False
+DEBUG:matplotlib:platform is linux
+DEBUG:matplotlib:CACHEDIR=/home/cerlab/.cache/matplotlib
+DEBUG:matplotlib.font_manager:Using fontManager instance from /home/cerlab/.cache/matplotlib/fontlist-v330.json
+INFO:CerlabSpotSDK.192.168.50.3:ptz
+INFO:CerlabSpotSDK.192.168.50.3:waiting for time sync...
+INFO:CerlabSpotSDK.192.168.50.3:sync established.
+INFO:CerlabSpotSDK.192.168.50.3:Acquiring lease...
+INFO:CerlabSpotSDK.192.168.50.3:Setting up clients...
+INFO:CerlabSpotSDK.192.168.50.3:Ready to power on robot.
+INFO:root:Starting lease check-in
+INFO:CerlabSpotSDK.192.168.50.3:Powering on robot... This may take several seconds.
+INFO:CerlabSpotSDK.192.168.50.3:Robot powered on.
+INFO:CerlabSpotSDK.192.168.50.3:Set robot to accept command...
+INFO:root:Lease check-in stopped
+DEBUG:matplotlib:matplotlib data path: /home/cerlab/.local/lib/python3.8/site-packages/matplotlib/mpl-data
+DEBUG:matplotlib:CONFIGDIR=/home/cerlab/.config/matplotlib
+DEBUG:matplotlib:interactive is False
+DEBUG:matplotlib:platform is linux
+DEBUG:matplotlib:CACHEDIR=/home/cerlab/.cache/matplotlib
+DEBUG:matplotlib.font_manager:Using fontManager instance from /home/cerlab/.cache/matplotlib/fontlist-v330.json
+INFO:CerlabSpotSDK.192.168.50.3:ptz
+INFO:CerlabSpotSDK.192.168.50.3:waiting for time sync...
+INFO:CerlabSpotSDK.192.168.50.3:sync established.
+INFO:CerlabSpotSDK.192.168.50.3:Acquiring lease...
+INFO:CerlabSpotSDK.192.168.50.3:Setting up clients...
+INFO:CerlabSpotSDK.192.168.50.3:Ready to power on robot.
+INFO:root:Starting lease check-in
+INFO:CerlabSpotSDK.192.168.50.3:Powering on robot... This may take several seconds.
+INFO:CerlabSpotSDK.192.168.50.3:Robot powered on.
+INFO:CerlabSpotSDK.192.168.50.3:Set robot to accept command...
+INFO:root:Lease check-in stopped
+DEBUG:matplotlib:matplotlib data path: /home/cerlab/.local/lib/python3.8/site-packages/matplotlib/mpl-data
+DEBUG:matplotlib:CONFIGDIR=/home/cerlab/.config/matplotlib
+DEBUG:matplotlib:interactive is False
+DEBUG:matplotlib:platform is linux
+DEBUG:matplotlib:CACHEDIR=/home/cerlab/.cache/matplotlib
+DEBUG:matplotlib.font_manager:Using fontManager instance from /home/cerlab/.cache/matplotlib/fontlist-v330.json
+INFO:CerlabSpotSDK.192.168.50.3:ptz
+INFO:CerlabSpotSDK.192.168.50.3:waiting for time sync...
+INFO:CerlabSpotSDK.192.168.50.3:sync established.
+INFO:CerlabSpotSDK.192.168.50.3:Acquiring lease...
+INFO:CerlabSpotSDK.192.168.50.3:Setting up clients...
+INFO:CerlabSpotSDK.192.168.50.3:Ready to power on robot.
+INFO:root:Starting lease check-in
+INFO:CerlabSpotSDK.192.168.50.3:Powering on robot... This may take several seconds.
+INFO:CerlabSpotSDK.192.168.50.3:Robot powered on.
+INFO:CerlabSpotSDK.192.168.50.3:Set robot to accept command...
+INFO:root:Lease check-in stopped
+DEBUG:matplotlib:matplotlib data path: /home/cerlab/.local/lib/python3.8/site-packages/matplotlib/mpl-data
+DEBUG:matplotlib:CONFIGDIR=/home/cerlab/.config/matplotlib
+DEBUG:matplotlib:interactive is False
+DEBUG:matplotlib:platform is linux
+DEBUG:matplotlib:CACHEDIR=/home/cerlab/.cache/matplotlib
+DEBUG:matplotlib.font_manager:Using fontManager instance from /home/cerlab/.cache/matplotlib/fontlist-v330.json
+INFO:CerlabSpotSDK.192.168.50.3:ptz
+INFO:CerlabSpotSDK.192.168.50.3:waiting for time sync...
+INFO:CerlabSpotSDK.192.168.50.3:sync established.
+INFO:CerlabSpotSDK.192.168.50.3:Acquiring lease...
+INFO:CerlabSpotSDK.192.168.50.3:Setting up clients...
+INFO:CerlabSpotSDK.192.168.50.3:Ready to power on robot.
+INFO:root:Starting lease check-in
+INFO:CerlabSpotSDK.192.168.50.3:Powering on robot... This may take several seconds.
+INFO:CerlabSpotSDK.192.168.50.3:Robot powered on.
+INFO:CerlabSpotSDK.192.168.50.3:Set robot to accept command...
+INFO:root:Lease check-in stopped
+DEBUG:matplotlib:matplotlib data path: /home/cerlab/.local/lib/python3.8/site-packages/matplotlib/mpl-data
+DEBUG:matplotlib:CONFIGDIR=/home/cerlab/.config/matplotlib
+DEBUG:matplotlib:interactive is False
+DEBUG:matplotlib:platform is linux
+DEBUG:matplotlib:CACHEDIR=/home/cerlab/.cache/matplotlib
+DEBUG:matplotlib.font_manager:Using fontManager instance from /home/cerlab/.cache/matplotlib/fontlist-v330.json
+INFO:CerlabSpotSDK.192.168.50.3:ptz
+INFO:CerlabSpotSDK.192.168.50.3:waiting for time sync...
+INFO:CerlabSpotSDK.192.168.50.3:sync established.
+INFO:CerlabSpotSDK.192.168.50.3:Acquiring lease...
+INFO:CerlabSpotSDK.192.168.50.3:Setting up clients...
+INFO:CerlabSpotSDK.192.168.50.3:Ready to power on robot.
+INFO:root:Starting lease check-in
+INFO:CerlabSpotSDK.192.168.50.3:Powering on robot... This may take several seconds.
+INFO:CerlabSpotSDK.192.168.50.3:Robot powered on.
+INFO:CerlabSpotSDK.192.168.50.3:Set robot to accept command...
+INFO:root:Lease check-in stopped

@@ -591,7 +591,10 @@ class spotMoveBase:
     def publish_image_to_ros(self,cv_img):
         try:
             ros_img = self.bridge.cv2_to_imgmsg(cv_img, encoding="bgr8")
-            ros_img.header.stamp = rospy.Time.now()
+            # print("test time delay")
+            # print(rospy.Time.now())
+            ros_img.header.stamp = rospy.Time.now() - rospy.Duration(0.25)
+            # print(ros_img.header.stamp)
             self.img_pub.publish(ros_img)
         except CvBridgeError as e:
             print(e)
