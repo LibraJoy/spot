@@ -178,7 +178,7 @@ p = None
 webrtc_thread = None
 shutdown_flag = None
 reached_goal = None
-
+goal_mode = ["subscribe", "click"]
 
 class spotMoveBase:
     def __init__(self):
@@ -193,14 +193,22 @@ class spotMoveBase:
         self.heading = None
         self.mobility_params = self.set_mobility_params(0.75, 0.75, 0.6, -0.75, -0.75, -0.6)
 
+        # goal mode flag
+        self.goal_mode = "subscribe"
+
+
 
         # ROS
         self.goal = [0., 0., 0.] # x,y,yaw
-        # rospy.Subscriber("/spot/waypoint", PoseStamped, self.goal_pose_sub_callback)
-        rospy.Subscriber("/move_base_simple/goal", PoseStamped, self.goal_pose_sub_callback)
+        # rospy.Subscriber("/navigation_SPOT/waypoints", PoseStamped, self.goal_pose_sub_callback)
+        rospy.Subscriber("/spot/waypoint", PoseStamped, self.goal_pose_sub_callback)
+        rospy.Subscriber("/move_base_simple/goal", PoseStamped, self.goal_pose_click_callback)
         self.pose_pub = rospy.Publisher('/spot/pose', PoseStamped, queue_size=10)
         self.odom_pub = rospy.Publisher('/spot/odom', Odometry, queue_size=10)
         self.img_pub = rospy.Publisher('/spot_image', Image, queue_size=10)
+
+        # self.goal_reach = False
+        # self.goal_reach_pub = rospy.Publisher('/navigation_SPOT/goal_reach', Bool, queue_size=10)
         # self.yolo_img_pub = rospy.Publisher('yolo_image', Image, queue_size=10)
         # self.bbox_pub = rospy.Publisher('yolo_bbox', Detection2DArray, queue_size=10)
         # self.label_pub = rospy.Publisher('yolo_label', SemanticLabel, queue_size=10)
@@ -399,10 +407,12 @@ class spotMoveBase:
         # print(f"odom pub time: {rospy.Time.now() - start_time}")
 
     def goal_pose_sub_callback(self, msg):
+        self.goal_mode = "subscribe"
         global robot_command_client 
         global robot_state_client
         frame_name = VISION_FRAME_NAME
         
+        # print("in goal pose sub callback")
         if self.goal[0] == msg.pose.position.x and self.goal[1] == msg.pose.position.y:
             rospy.loginfo("subscribed goal has not changed, do not upddate command")
             return
@@ -414,6 +424,57 @@ class spotMoveBase:
         if math.sqrt((current_x - self.goal[0])**2 + (current_y - self.goal[1])**2) < 0.3:
             rospy.loginfo("goal is too close to current position, skip move command")
             return
+        
+        rospy.loginfo(f"waypoint: x: {self.goal[0]}, y: {self.goal[1]}")
+
+        
+        # send rotation command
+        
+        # if abs(self.heading) > math.pi/4 and abs(self.heading) < math.pi/2: 
+        #     dyaw = self.heading
+        dyaw = self.heading
+        if abs(current_heading - self.heading) < 0.2:
+            # Need to be check #
+            # self.rotate_cmd_id = None
+            # self.cmd_id = None
+            # Need to be check #
+            self.send_move_command()
+        else:
+            # rotation required when a new goal is received
+            # Need to be check
+            # self.rotate_cmd_id = None
+            # self.cmd_id = None
+            # Need to be check#
+            self.rotate_flag = True
+            rotate_cmd = RobotCommandBuilder.synchro_se2_trajectory_point_command(
+                goal_x=current_x, goal_y=current_y, goal_heading=dyaw,
+                frame_name=frame_name, params=self.mobility_params)
+                # frame_name=frame_name, params=RobotCommandBuilder.mobility_params(stair_hint=False))
+            rotate_end_time = 10.0
+            self.rotate_cmd_id = spot.robot_command_client.robot_command(lease=None, command=rotate_cmd,
+                                                        end_time_secs=time.time() + rotate_end_time)
+            print(f"rotation command request sent: {dyaw}")
+
+    def goal_pose_click_callback(self, msg):
+        self.goal_mode = "click"
+        global robot_command_client 
+        global robot_state_client
+        frame_name = VISION_FRAME_NAME
+        
+        # print("in goal pose sub callback")
+        if self.goal[0] == msg.pose.position.x and self.goal[1] == msg.pose.position.y:
+            rospy.loginfo("subscribed goal has not changed, do not upddate command")
+            return
+        #  Check distance between current position and goal
+        self.goal = [msg.pose.position.x, msg.pose.position.y, 0]
+        [dx, dy, dyaw] = self.goal
+        current_heading, current_x, current_y, self.heading = self.get_desired_heading(dx, dy)
+        
+        if math.sqrt((current_x - self.goal[0])**2 + (current_y - self.goal[1])**2) < 0.3:
+            rospy.loginfo("goal is too close to current position, skip move command")
+            return
+        
+        
         
         rospy.loginfo(f"waypoint: x: {self.goal[0]}, y: {self.goal[1]}")
 
@@ -471,6 +532,8 @@ class spotMoveBase:
         elif self.cmd_id:
                 print(f"check move command id {self.cmd_id}")
 
+        # self.goal_reach_pub.publish(self.goal_reach)
+
         # check rotation status
         if self.rotate_cmd_id:
             print(f"current desired heading: {self.heading}")
@@ -490,8 +553,8 @@ class spotMoveBase:
                     self.rotate_cmd_id = None
                     # send move command
                     self.send_move_command()
-            else:
-                print(f"executing rotation command, final_goal_status : {rot_traj_feedback.final_goal_status}")
+            # else:
+                # print(f"executing rotation command, final_goal_status : {rot_traj_feedback.final_goal_status}")
             
             if (rot_traj_feedback.status == rot_traj_feedback.STATUS_AT_GOAL and
                     rot_traj_feedback.body_movement_status == rot_traj_feedback.BODY_STATUS_SETTLED):
@@ -516,13 +579,21 @@ class spotMoveBase:
             if mobility_feedback.status != RobotCommandFeedbackStatus.STATUS_PROCESSING:
                 print(f"current move command id {self.cmd_id}, status: {mobility_feedback.status}")
                 print("Failed to reach the goal")
-            else:
-                print(f"executing move command, final_goal_status: {traj_feedback.final_goal_status}")
+            # else:
+                # print(f"executing move command, final_goal_status: {traj_feedback.final_goal_status}")
             
             if (traj_feedback.status == traj_feedback.STATUS_AT_GOAL and
                     traj_feedback.body_movement_status == traj_feedback.BODY_STATUS_SETTLED):
                 rospy.logwarn("Arrived at the goal.")
+                # self.goal_reach = True
+                # rospy.loginfo("Goal reach status changed to: %s", self.goal_reach)
+                # self.goal_reach_pub.publish(self.goal_reach)
                 self.cmd_id = None
+                # in click mode, if goal is origin, sit
+                if self.goal_mode == "click":
+                    if (math.sqrt(self.goal[0]**2 + self.goal[1]**2) < 0.3):
+                        spot.sit()
+                        rospy.logwarn("click mode goal is origin, sit")
 
     def get_desired_heading(self, dx, dy):
         position, quaternion = self.get_location()
