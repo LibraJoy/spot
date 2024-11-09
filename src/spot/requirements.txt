@@ -1,6 +1,6 @@
-bosdyn-client==4.0.1
-bosdyn-mission==4.0.1
-bosdyn-choreography-client==4.0.1
+bosdyn-client==4.0.3
+bosdyn-mission==4.0.3
+bosdyn-choreography-client==4.0.3
 # I prefer conda (qt backbone)
 #opencv-contrib-python>=4.6.0.66
 #opencv-python>=4.6.0.66
@@ -28,4 +28,4 @@ torchaudio
 yolov7detect
 
 # SAM
-git+https://github.com/facebookresearch/segment-anything.git
+# git+https://github.com/facebookresearch/segment-anything.git
