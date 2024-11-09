@@ -2,9 +2,9 @@
 ## /.bashrc setting
 add the following lines to ~/.bashrc
 ```
--export BOSDYN_CLIENT_USERNAME=user
--export BOSDYN_CLIENT_PASSWORD=scgau6g5w987
--export SPOT_HOSTNAME="192.168.80.3"
+export BOSDYN_CLIENT_USERNAME=user
+export BOSDYN_CLIENT_PASSWORD=scgau6g5w987
+export SPOT_HOSTNAME="192.168.80.3"
 ```
 ## Install required dependencies and the package
 ```
