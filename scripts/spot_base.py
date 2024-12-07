@@ -23,7 +23,7 @@ import multiprocessing as mp
 import bosdyn.client.math_helpers as math_helpers
 from nav_msgs.msg import Path
 from std_msgs.msg import Bool
-from geometry_msgs.msg import PoseStamped
+from geometry_msgs.msg import PoseStamped, TransformStamped
 from nav_msgs.msg import Odometry
 from bosdyn.client.graph_nav import GraphNavClient
 from bosdyn.client.math_helpers import Quat, SE3Pose
@@ -54,6 +54,7 @@ import rospy
 from sensor_msgs.msg import Image
 from cv_bridge import CvBridge, CvBridgeError
 from vision_msgs.msg import Detection2DArray, Detection2D, BoundingBox2D, ObjectHypothesisWithPose
+import tf2_ros
 
 class yolo_seg:
     def __init__(self):
@@ -196,9 +197,8 @@ class spotMoveBase:
         # goal mode flag
         self.goal_mode = "subscribe"
 
-
-
         # ROS
+        self.tf_broadcaster = tf2_ros.TransformBroadcaster()
         self.goal = [0., 0., 0.] # x,y,yaw
         # rospy.Subscriber("/navigation_SPOT/waypoints", PoseStamped, self.goal_pose_sub_callback)
         rospy.Subscriber("/spot/waypoint", PoseStamped, self.goal_pose_sub_callback)
@@ -374,6 +374,7 @@ class spotMoveBase:
         odom_msg = Odometry()
         odom_msg.header.stamp = rospy.Time.now()
         odom_msg.header.frame_id = "map"
+        odom_msg.header.child_frame_id = "spot_base"
 
         position, quaternion = self.get_location()
         # qx, qy, qz, qw = quaternion.as_quat()
@@ -405,6 +406,20 @@ class spotMoveBase:
         # rospy.loginfo(odom_msg)
         self.odom_pub.publish(odom_msg)
         # print(f"odom pub time: {rospy.Time.now() - start_time}")
+        
+        # broadcast transform from map to spot_base
+        tf = TransformStamped()
+        tf.header.stamp = rospy.Time.now()
+        tf.header.frame_id = "map"
+        tf.child_frame_id = "spot_base"
+        tf.transform.translation.x = position.x
+        tf.transform.translation.y = position.y
+        tf.transform.translation.z = position.z
+        tf.transform.rotation.x = quaternion.x
+        tf.transform.rotation.y = quaternion.y
+        tf.transform.rotation.z = quaternion.z
+        tf.transform.rotation.w = quaternion.w
+        self.tf_broadcaster.sendTransform(tf)
 
     def goal_pose_sub_callback(self, msg):
         self.goal_mode = "subscribe"

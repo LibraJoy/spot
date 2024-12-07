@@ -18,6 +18,7 @@ find_package(catkin REQUIRED COMPONENTS
   vision_msgs
   message_generation
   pcl_conversions
+  tf2_ros
 )
 
 find_package(OpenCV REQUIRED)
@@ -115,7 +116,7 @@ generate_messages(
 catkin_package(
 #  INCLUDE_DIRS include
 #  LIBRARIES spot
- CATKIN_DEPENDS rospy std_msgs sensor_msgs geometry_msgs cv_bridge nav_msgs vision_msgs message_runtime pcl_conversions
+ CATKIN_DEPENDS rospy std_msgs sensor_msgs geometry_msgs cv_bridge nav_msgs vision_msgs message_runtime pcl_conversions tf2_ros
 #  DEPENDS system_lib
 )
 
