@@ -18,7 +18,8 @@ catkin_make
 ```
 ## Connnect to spot
 change the hostname in spot_spot and estop modules
-- via ethernet: "192.168.50.3"
+- via ethernet of Spot Dock: "192.168.50.3"
+- via ethernet behind the spot: "10.0.0.3'
 - via spot wifi: "192.168.80.3"
 
 Always run estop first
