@@ -22,6 +22,14 @@ change the hostname in spot_spot and estop modules
 - via ethernet behind the spot: "10.0.0.3"
 - via spot wifi: "192.168.80.3"
 
+If want change the connect method:
+```
+nano ~/.bashrc
+export SPOT_HOSTNAME="#IP ADDRESS#"
+cd ~/spot_ws/src/spot/src/spot/estop_nogui.py
+argv.append("#IP ADDRESS#")
+```
+
 Always run estop first
 ```
 cd ~/spot_ws/src/spot/src/spot
