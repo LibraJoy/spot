@@ -374,7 +374,8 @@ class spotMoveBase:
         odom_msg = Odometry()
         odom_msg.header.stamp = rospy.Time.now()
         odom_msg.header.frame_id = "map"
-        odom_msg.header.child_frame_id = "spot_base"
+        odom_msg.child_frame_id = "spot_base"
+        #odom_msg.header.child_frame_id = "spot_base"
 
         position, quaternion = self.get_location()
         # qx, qy, qz, qw = quaternion.as_quat()
