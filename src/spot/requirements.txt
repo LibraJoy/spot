@@ -6,11 +6,11 @@ bosdyn-choreography-client==4.0.3
 #opencv-python>=4.6.0.66
 pyqt5
 aiortc
-numpy
-Pillow
-requests
+numpy==1.24.4
+Pillow==10.0.0
+requests==2.31.0
 scipy
-matplotlib
+matplotlib==3.7.1
 pylsd-nova
 pyrender
 trimesh
@@ -26,6 +26,9 @@ torchaudio
 
 # yolo v7
 yolov7detect
+
+# yolo v8
+ultralytics==8.2.79
 
 # SAM
 # git+https://github.com/facebookresearch/segment-anything.git

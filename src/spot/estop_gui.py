@@ -281,7 +281,7 @@ def main(argv):
     parser.add_argument('--start-minimized', help='Start the window minimized.',
                         dest='start_minimized', action='store_true', default=False)
     # argv.append("192.168.80.3")
-    argv.append("192.168.50.3") # ethernet
+    argv.append("10.0.0.3") # ethernet
     print(argv)
     options = parser.parse_args(argv)
     bosdyn.client.util.setup_logging(options.verbose)

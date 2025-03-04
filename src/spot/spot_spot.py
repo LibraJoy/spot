@@ -37,7 +37,7 @@ pan = 144.0
 tilt = 0.0
 zoom = 1.0
 
-hostname = '192.168.50.3'
+hostname = '10.0.0.3'
 
 command_client = None
 lease_client = None

@@ -61,7 +61,7 @@ def main(argv):
     This has little practical use, because calling the function this way does not give the user
     any way to trigger an estop from the terminal.
     """
-    argv.append("192.168.50.3")
+    argv.append("10.0.0.3")
     parser = argparse.ArgumentParser()
     bosdyn.client.util.add_base_arguments(parser)
     parser.add_argument('-t', '--timeout', type=float, default=5, help='Timeout in seconds')
