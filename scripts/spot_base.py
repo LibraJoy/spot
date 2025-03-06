@@ -40,7 +40,7 @@ import torch
 import os
 import random
 import threading
-
+# import SAM2
 # yolo v8
 import PIL.Image
 import cv2
@@ -60,15 +60,23 @@ class yolo_seg:
     def __init__(self):
         self.w_org = 1280
         self.h_org = 720
-        self.model = YOLO("/home/cerlab/spot_ws/yolov8m-seg.pt")
+        ## new - add the GPU as the device
+        self.device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
+        print(f"Yolo device: {self.device}")
+        self.model = YOLO("/root/spot_ws/src/spot/models/yolov8m-seg.pt")
+        # self.model = YOLO("/home/user/spot_ws/src/spot/models/yolov8m-seg.pt") # temporarily use for spot_sam2 image
+        self.model.to(self.device)
+        print(f"model is on device: {self.model.device}")
+        self.last_time = None
+        ## new
         self.img_resized = None
         self.bridge = CvBridge()
-        self.img_sub = rospy.Subscriber('spot_image', Image, self.image_callback)
-        self.yolo_vis_pub = rospy.Publisher('yolo/visualization', Image, queue_size=10)
-        self.yolo_detect_pub = rospy.Publisher('yolo/detection', Detection2DArray, queue_size=10)
-        self.yolo_mask_pub = rospy.Publisher('yolo/mask', Image, queue_size=10)
+        self.img_sub = rospy.Subscriber('/spot_image', Image, self.image_callback)
+        self.yolo_vis_pub = rospy.Publisher('/yolo/visualization', Image, queue_size=10)
+        self.yolo_detect_pub = rospy.Publisher('/yolo/detection', Detection2DArray, queue_size=10)
+        self.yolo_mask_pub = rospy.Publisher('/yolo/mask', Image, queue_size=10)
         self.img_data = None
-        self.obj_label_of_interest = [56, 57, 60, 62]
+        # self.obj_label_of_interest = [56, 57, 60, 62]
 
     def plot(self, results):
         for i, r in enumerate(results):
@@ -100,8 +108,8 @@ class yolo_seg:
             # make an empty mask
             mask_base = np.zeros((self.h_org, self.w_org), dtype=np.uint8)
             for j in range(r.boxes.cls.shape[0]): # number of bounding boxes in current frame
-                if int(r.boxes.cls[j]) not in self.obj_label_of_interest:
-                    continue
+                # if int(r.boxes.cls[j]) not in self.obj_label_of_interest:
+                #     continue
                 detection = Detection2D()
                 result = ObjectHypothesisWithPose()
                 result.id = int(r.boxes.cls[j])
@@ -145,7 +153,7 @@ class yolo_seg:
         # self.plot(results)
         self.publish_results(results)
 
-    # make boundinb box and semantic mask msg from yolo results->Detection2DArray
+    # make bounding box and semantic mask msg from yolo results->Detection2DArray
     def make_msg(self, results):
         print("make_msg")
         detection_array = Detection2DArray()
@@ -192,7 +200,10 @@ class spotMoveBase:
         self.img = None
         self.img_received = False
         self.heading = None
-        self.mobility_params = self.set_mobility_params(0.75, 0.75, 0.6, -0.75, -0.75, -0.6)
+        self.v_lin = 0.75
+        self.v_ang = 0.6
+        self.mobility_params = self.set_mobility_params(self.v_lin, self.v_lin, self.v_ang, -self.v_lin, -self.v_lin, -self.v_ang)
+        self.position = None
 
         # goal mode flag
         self.goal_mode = "subscribe"
@@ -207,43 +218,18 @@ class spotMoveBase:
         self.odom_pub = rospy.Publisher('/spot/odom', Odometry, queue_size=10)
         self.img_pub = rospy.Publisher('/spot_image', Image, queue_size=10)
 
-        # self.goal_reach = False
-        # self.goal_reach_pub = rospy.Publisher('/navigation_SPOT/goal_reach', Bool, queue_size=10)
-        # self.yolo_img_pub = rospy.Publisher('yolo_image', Image, queue_size=10)
-        # self.bbox_pub = rospy.Publisher('yolo_bbox', Detection2DArray, queue_size=10)
-        # self.label_pub = rospy.Publisher('yolo_label', SemanticLabel, queue_size=10)
         rospy.Timer(rospy.Duration(0.03), self.odom_pub_timer_callback)
         rospy.Timer(rospy.Duration(0.05), self.move_status_check_timer_callback)
 
         self.yolo = yolo_seg()
-        
+        # SAM2 instance
+        # self.sam2 = SAM2()
 
-
-        
-        # # # yolo
-        # rospack = rospkg.RosPack()
-        # pkg_path = rospack.get_path('spot')
-        # # model_path = os.path.join(pkg_path, 'src/spot', 'yolov7.pt')
-        # model_path = os.path.join(pkg_path, 'src/spot', 'best.7.10.pt')
-        # device = 'cpu'
-        # if torch.cuda.is_available():
-        #     device = 'cuda:0'
-        # torch.device(device)
-        # print(f"device: {device}")
-        # # model = yolov7.load('yolov7.pt') # ... COCO
-
-        # self.model = yolov7.load(model_path)
-        # # image service
         self.bridge = CvBridge()
         spot.set_screen('pano_full')
         self.startMonitor(spot.hostname, spot.robot)
-        # spot_move.startMonitor(spot.hostname, spot.robot, movement=self.image_getter)
-        # creat image getter thread
-        # self.img_getter_thread = threading.Thread(target=self.image_getter)
-        # self.img_getter_thread.start()
 
         rospy.Timer(rospy.Duration(0.1), self.raw_img_callback)
-        # rospy.Timer(rospy.Duration(0.3), self.yolo_callback)
 
     def set_mobility_params(self, max_x_vel, max_y_vel, max_yaw_vel, min_x_vel, min_y_vel, min_yaw_vel):
         speed_limit = SE2VelocityLimit(max_vel=SE2Velocity(linear=Vec2(x=max_x_vel, y=max_y_vel), angular=max_yaw_vel), min_vel=SE2Velocity(linear=Vec2(x=min_x_vel, y=min_y_vel), angular=min_yaw_vel))
@@ -293,39 +279,6 @@ class spotMoveBase:
                 self.img_received = True
                 break
 
-
-    def image_getter(self):
-        while not rospy.is_shutdown():
-            # print("image getter")
-            # self.rgb = spot_webrtc.rgbImage.copy()
-            self.img = spot_webrtc.cvImage.copy()
-
-
-        # results = self.model(rgb)
-        # p = results.pred[0]
-        # box = p[:,:4] # bbox start and end points
-        # conf = p[:,4] # condidence
-        # cat = p[:,5] # category id
-        # tl = 3
-        # for i in range(len(box)):
-        #     label = '{} {:.1f}%'.format(self.model.names[int(cat[i])], conf[i]*100.0)
-        #     # print(label)
-        #     color = [random.randint(0, 255) for _ in range(3)]
-        #     c1, c2 = (int(box[i][0]), int(box[i][1])), (int(box[i][2]), int(box[i][3]))
-        #     cv2.rectangle(img, c1, c2, color, tl, lineType=cv2.LINE_AA) # object bounding box
-        #     tf = max(tl -1, 1)
-        #     t_size = cv2.getTextSize(label, 0, fontScale=tl / 3, thickness=tf)[0]
-        #     c2 = c1[0] + t_size[0], c1[1] - t_size[1] - 3
-        #     cv2.rectangle(img, c1, c2, color, -1, cv2.LINE_AA)  # filled box for labels
-        #     cv2.putText(img, label, (c1[0], c1[1] - 2), 0, tl / 3, [225, 255, 255], thickness=tf, lineType=cv2.LINE_AA)
-
-        # raw_img = spot_webrtc.cvImage.copy()
-
-        # self.publish_image_to_ros(raw_img)
-        # self.publish_yolo_img_to_ros(img)
-        # self.publish_bbox(box, cat, conf)
-        # self.publish_sem_label(self.model, cat)
-
     def raw_img_callback(self, event):
         # publish ros image
         # print("publish ros img")
@@ -338,33 +291,6 @@ class spotMoveBase:
             # self.img_yolo = cv2.cvtColor(self.img_yolo, cv2.COLOR_RGB2BGR)
             # self.img_yolo = torch.from_numpy(self.img_yolo).unsqueeze(0).float().to('cuda')
 
-
-    def yolo_callback(self, event):
-        self.rgb = spot_webrtc.rgbImage.copy()
-        # print(self.rgb.shape)
-        # print(self.img_yolo.shape)
-        results = self.model(self.rgb)
-        p = results.pred[0]
-        box = p[:,:4] # bbox start and end points
-        conf = p[:,4] # condidence
-        cat = p[:,5] # category id
-        tl = 3
-        self.rgb = cv2.cvtColor(self.rgb, cv2.COLOR_RGB2BGR)
-        for i in range(len(box)):
-            label = '{} {:.1f}%'.format(self.model.names[int(cat[i])], conf[i]*100.0)
-            # print(label)
-            color = [random.randint(0, 255) for _ in range(3)]
-            c1, c2 = (int(box[i][0]), int(box[i][1])), (int(box[i][2]), int(box[i][3]))
-            cv2.rectangle(self.rgb, c1, c2, color, tl, lineType=cv2.LINE_AA) # object bounding box
-            tf = max(tl -1, 1)
-            t_size = cv2.getTextSize(label, 0, fontScale=tl / 3, thickness=tf)[0]
-            c2 = c1[0] + t_size[0], c1[1] - t_size[1] - 3
-            cv2.rectangle(self.rgb, c1, c2, color, -1, cv2.LINE_AA)  # filled box for labels
-            cv2.putText(self.rgb, label, (c1[0], c1[1] - 2), 0, tl / 3, [225, 255, 255], thickness=tf, lineType=cv2.LINE_AA)
-        
-        self.publish_yolo_img_to_ros(self.rgb)
-        self.publish_bbox(box, cat, conf)
-
     def odom_pub_timer_callback(self, event):
         start_time = rospy.Time.now()
         pose_msg = PoseStamped()
@@ -375,10 +301,8 @@ class spotMoveBase:
         odom_msg.header.stamp = rospy.Time.now()
         odom_msg.header.frame_id = "map"
         odom_msg.child_frame_id = "spot_base"
-        #odom_msg.header.child_frame_id = "spot_base"
 
         position, quaternion = self.get_location()
-        # qx, qy, qz, qw = quaternion.as_quat()
         # Set position
         pose_msg.pose.position.x = position.x
         pose_msg.pose.position.y = position.y
@@ -407,6 +331,7 @@ class spotMoveBase:
         # rospy.loginfo(odom_msg)
         self.odom_pub.publish(odom_msg)
         # print(f"odom pub time: {rospy.Time.now() - start_time}")
+        self.position = [position.x, position.y, position.z]
         
         # broadcast transform from map to spot_base
         tf = TransformStamped()
@@ -443,30 +368,20 @@ class spotMoveBase:
         
         rospy.loginfo(f"waypoint: x: {self.goal[0]}, y: {self.goal[1]}")
 
-        
-        # send rotation command
-        
-        # if abs(self.heading) > math.pi/4 and abs(self.heading) < math.pi/2: 
-        #     dyaw = self.heading
         dyaw = self.heading
         if abs(current_heading - self.heading) < 0.2:
-            # Need to be check #
-            # self.rotate_cmd_id = None
-            # self.cmd_id = None
-            # Need to be check #
             self.send_move_command()
         else:
             # rotation required when a new goal is received
-            # Need to be check
-            # self.rotate_cmd_id = None
-            # self.cmd_id = None
-            # Need to be check#
             self.rotate_flag = True
             rotate_cmd = RobotCommandBuilder.synchro_se2_trajectory_point_command(
                 goal_x=current_x, goal_y=current_y, goal_heading=dyaw,
                 frame_name=frame_name, params=self.mobility_params)
-                # frame_name=frame_name, params=RobotCommandBuilder.mobility_params(stair_hint=False))
-            rotate_end_time = 10.0
+
+            # calculate rotate end time and send rotate cmd
+            rotate_end_time = 1.5*(abs(current_heading - self.heading)/self.v_ang)
+            rotate_end_time = min(10.0, rotate_end_time)
+            # print("rotate end time: ", rotate_end_time)
             self.rotate_cmd_id = spot.robot_command_client.robot_command(lease=None, command=rotate_cmd,
                                                         end_time_secs=time.time() + rotate_end_time)
             print(f"rotation command request sent: {dyaw}")
@@ -490,36 +405,24 @@ class spotMoveBase:
             rospy.loginfo("goal is too close to current position, skip move command")
             return
         
-        
-        
         rospy.loginfo(f"waypoint: x: {self.goal[0]}, y: {self.goal[1]}")
 
-        
         # send rotation command
-        
-        # if abs(self.heading) > math.pi/4 and abs(self.heading) < math.pi/2: 
-        #     dyaw = self.heading
         dyaw = self.heading
         if abs(current_heading - self.heading) < 0.2:
-            # Need to be check #
-            # self.rotate_cmd_id = None
-            # self.cmd_id = None
-            # Need to be check #
             self.send_move_command()
         else:
-            # rotation required when a new goal is received
-            # Need to be check
-            # self.rotate_cmd_id = None
-            # self.cmd_id = None
-            # Need to be check#
             self.rotate_flag = True
             rotate_cmd = RobotCommandBuilder.synchro_se2_trajectory_point_command(
                 goal_x=current_x, goal_y=current_y, goal_heading=dyaw,
                 frame_name=frame_name, params=self.mobility_params)
-                # frame_name=frame_name, params=RobotCommandBuilder.mobility_params(stair_hint=False))
-            rotate_end_time = 10.0
+
+            # calculate rotate end time and send rotate cmd
+            rotate_end_time = 1.5*(abs(current_heading - self.heading)/self.v_ang)
+            rotate_end_time = min(10.0, rotate_end_time)
             self.rotate_cmd_id = spot.robot_command_client.robot_command(lease=None, command=rotate_cmd,
                                                         end_time_secs=time.time() + rotate_end_time)
+            print("rotate end time: ", rotate_end_time)
             print(f"rotation command request sent: {dyaw}")
 
     def send_move_command(self):
@@ -534,7 +437,11 @@ class spotMoveBase:
             robot_cmd = RobotCommandBuilder.synchro_se2_trajectory_point_command(
                 goal_x=dx, goal_y=dy, goal_heading=dyaw,
                 frame_name=frame_name, params=self.mobility_params)
-            end_time = 20.0
+            # calculate move end time and send move cmd
+            end_time = 2.0 * (math.sqrt((dx - self.position[0])**2 + (dy - self.position[1])**2)/self.v_lin)
+            end_time = min(20.0, end_time)
+            end_time = max(4.0, end_time)
+            print(f"move end time: {end_time}")
             self.cmd_id = spot.robot_command_client.robot_command(lease=None, command=robot_cmd,
                                                         end_time_secs=time.time() + end_time)
             print(f"movement command request sent: {self.goal}") 
@@ -543,35 +450,39 @@ class spotMoveBase:
         if not self.rotate_cmd_id and not self.cmd_id:
             # rospy.loginfo("no rotation and movement commands, skip move status check")
             return
-        elif self.rotate_cmd_id:
-                print(f"check rotation command id {self.rotate_cmd_id}")
-        elif self.cmd_id:
-                print(f"check move command id {self.cmd_id}")
-
-        # self.goal_reach_pub.publish(self.goal_reach)
+        # elif self.rotate_cmd_id:
+                # print(f"check rotation command id {self.rotate_cmd_id}")
+        # elif self.cmd_id:
+                # print(f"check move command id {self.cmd_id}")
 
         # check rotation status
         if self.rotate_cmd_id:
-            print(f"current desired heading: {self.heading}")
+            # print(f"current desired heading: {self.heading}")
             current_heading = self.get_desired_heading(self.goal[0], self.goal[1])[0]
-            print(f"current heading: {current_heading}")
+            # print(f"current heading: {current_heading}")
 
             rot_feedback = spot.robot_command_client.robot_command_feedback(self.rotate_cmd_id)
             rot_mobility_feedback = rot_feedback.feedback.synchronized_feedback.mobility_command_feedback
             rot_traj_feedback = rot_mobility_feedback.se2_trajectory_feedback
+
             if rot_mobility_feedback.status != RobotCommandFeedbackStatus.STATUS_PROCESSING:
-                print(f"current rotation command id {self.rotate_cmd_id}, status: {rot_mobility_feedback.status}")
-                print("Failed to rotate to desired heading")
+                # print(f"current rotation command id {self.rotate_cmd_id}, status: {rot_mobility_feedback.status}")
+                # if rotation command time out, print failed message and send move command
                 if rot_mobility_feedback.status == 3:
-                    rospy.logwarn("Rotation command time out, send move command")
+                    # calculate the difference between current heading and desired heading
+                    diff = abs(current_heading - self.heading)
+                    if diff > 0.1:
+                        # if rotation command time out and not reaching the goal, print failed message
+                        print(f"rotate cmd {self.rotate_cmd_id} failed due to time out. Send move cmd.")
+                    else:
+                        rospy.logwarn("Facing the desired heading within tolerance now. Send move cmd.")
                     # clear rotation command id
                     self.rotate_flag = False
                     self.rotate_cmd_id = None
                     # send move command
                     self.send_move_command()
-            # else:
-                # print(f"executing rotation command, final_goal_status : {rot_traj_feedback.final_goal_status}")
             
+            # send move command after rotation is done
             if (rot_traj_feedback.status == rot_traj_feedback.STATUS_AT_GOAL and
                     rot_traj_feedback.body_movement_status == rot_traj_feedback.BODY_STATUS_SETTLED):
                 rospy.logwarn("Facing the desired heading now.")
@@ -584,26 +495,29 @@ class spotMoveBase:
 
         # check movement status
         if not self.cmd_id:
-            rospy.loginfo("no command id, skip move status check")
+            # rospy.loginfo("no command id, skip move status check")
             return
         if self.cmd_id:
-            print(f"current goal in global move: {self.goal}")
-            print(f"current position: {self.get_location()}")
             feedback = spot.robot_command_client.robot_command_feedback(self.cmd_id)
             mobility_feedback = feedback.feedback.synchronized_feedback.mobility_command_feedback
             traj_feedback = mobility_feedback.se2_trajectory_feedback
             if mobility_feedback.status != RobotCommandFeedbackStatus.STATUS_PROCESSING:
-                print(f"current move command id {self.cmd_id}, status: {mobility_feedback.status}")
-                print("Failed to reach the goal")
-            # else:
-                # print(f"executing move command, final_goal_status: {traj_feedback.final_goal_status}")
+                # print(f"current move command id {self.cmd_id}, status: {mobility_feedback.status}")
+
+                if mobility_feedback.status == 3:
+                    # set reached goal tolerance to 0.15m
+                    diff = math.sqrt((self.position[0] - self.goal[0])**2 + (self.position[1] - self.goal[1])**2)
+                    if diff > 0.15:
+                        # if move command time out and not reaching the goal, print failed message
+                        print(f"move cmd {self.cmd_id} failed due to time out. distance to goal is {diff}")
+                    else:
+                        rospy.logwarn("Reached goal within tolerance now.")
+                    # clear move command id otherwise it's keep printing msg
+                        self.cmd_id = None
             
             if (traj_feedback.status == traj_feedback.STATUS_AT_GOAL and
                     traj_feedback.body_movement_status == traj_feedback.BODY_STATUS_SETTLED):
                 rospy.logwarn("Arrived at the goal.")
-                # self.goal_reach = True
-                # rospy.loginfo("Goal reach status changed to: %s", self.goal_reach)
-                # self.goal_reach_pub.publish(self.goal_reach)
                 self.cmd_id = None
                 # in click mode, if goal is origin, sit
                 if self.goal_mode == "click":
@@ -621,17 +535,17 @@ class spotMoveBase:
         x = dx - current_x
         y = dy - current_y
         goal_yaw = math.atan2(y, x)
-        print(f"current yaw: {current_yaw}, goal yaw: {goal_yaw}")
+        # print(f"current yaw: {current_yaw}, goal yaw: {goal_yaw}")
 
         diff = abs(goal_yaw - current_yaw)
         if diff > math.pi:
             diff = 2*math.pi - diff
-        print(f"diff: {diff}")
+        # print(f"diff: {diff}")
         if math.pi/8 < diff < 3*math.pi/4:
             dyaw = goal_yaw
         else:
             dyaw = current_yaw
-        print(f"desired heading: {dyaw}")
+        # print(f"desired heading: {dyaw}")
         return current_yaw, current_x, current_y, dyaw
 
     def get_location(self):
