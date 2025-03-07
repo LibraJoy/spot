@@ -40,7 +40,7 @@ import torch
 import os
 import random
 import threading
-# import SAM2
+from spot.yolo_sam2 import SAM2
 # yolo v8
 import PIL.Image
 import cv2
@@ -56,6 +56,7 @@ from cv_bridge import CvBridge, CvBridgeError
 from vision_msgs.msg import Detection2DArray, Detection2D, BoundingBox2D, ObjectHypothesisWithPose
 import tf2_ros
 
+detection_model = ["yolov8", "yolov7-sam2"]
 class yolo_seg:
     def __init__(self):
         self.w_org = 1280
@@ -63,8 +64,8 @@ class yolo_seg:
         ## new - add the GPU as the device
         self.device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
         print(f"Yolo device: {self.device}")
-        self.model = YOLO("/root/spot_ws/src/spot/models/yolov8m-seg.pt")
-        # self.model = YOLO("/home/user/spot_ws/src/spot/models/yolov8m-seg.pt") # temporarily use for spot_sam2 image
+        # self.model = YOLO("/root/spot_ws/src/spot/models/yolov8m-seg.pt")
+        self.model = YOLO("/home/user/spot_ws/src/spot/models/yolov8m-seg.pt") # temporarily use for spot_sam2 image
         self.model.to(self.device)
         print(f"model is on device: {self.model.device}")
         self.last_time = None
@@ -208,6 +209,10 @@ class spotMoveBase:
         # goal mode flag
         self.goal_mode = "subscribe"
 
+        # detection model
+        # self.detection_model = "yolov8"
+        self.detection_model = "yolov7-sam2"
+
         # ROS
         self.tf_broadcaster = tf2_ros.TransformBroadcaster()
         self.goal = [0., 0., 0.] # x,y,yaw
@@ -221,9 +226,12 @@ class spotMoveBase:
         rospy.Timer(rospy.Duration(0.03), self.odom_pub_timer_callback)
         rospy.Timer(rospy.Duration(0.05), self.move_status_check_timer_callback)
 
-        self.yolo = yolo_seg()
-        # SAM2 instance
-        # self.sam2 = SAM2()
+        # self.yolo = yolo_seg()
+        if self.detection_model == "yolov8":
+            self.yolo = yolo_seg()
+        elif self.detection_model == "yolov7-sam2":
+            # SAM2 instance
+            self.sam2 = SAM2()
 
         self.bridge = CvBridge()
         spot.set_screen('pano_full')
@@ -513,7 +521,7 @@ class spotMoveBase:
                     else:
                         rospy.logwarn("Reached goal within tolerance now.")
                     # clear move command id otherwise it's keep printing msg
-                        self.cmd_id = None
+                    self.cmd_id = None
             
             if (traj_feedback.status == traj_feedback.STATUS_AT_GOAL and
                     traj_feedback.body_movement_status == traj_feedback.BODY_STATUS_SETTLED):

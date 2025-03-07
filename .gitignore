@@ -1,2 +1,3 @@
 **/__pycache__/**
-**/webrtc.log
+**/webrtc.log/
+**/models/**
