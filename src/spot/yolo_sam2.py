@@ -27,7 +27,8 @@ class SAM2:
     def __init__(self):
         self.w_org = 1280
         self.h_org = 720
-        self.model_path = "/home/user/spot_ws/src/spot/models/yolov7.pt"
+        # self.model_path = "/home/user/spot_ws/src/spot/models/yolov7.pt"
+        self.model_path = "/home/user/spot_ws/src/spot/models/best.7.10.pt"
         # Load YOLOv7 model
         if torch.cuda.is_available():
             device = torch.device("cuda")
@@ -144,6 +145,7 @@ class SAM2:
         self.sam2_predictor.set_image(image)
         masks=None
         mask_base = np.zeros(img_overlay.shape[:2], dtype=np.uint8)
+
         if input_boxes.size(0) > 0:
             masks, scores, _ = self.sam2_predictor.predict(
                 point_coords=None,
@@ -151,13 +153,17 @@ class SAM2:
                 box=input_boxes,
                 multimask_output=False,
             )
+            
+            end_time = time.time()
+            execution_time = end_time - start_time
+            print(f"SAM execution time: {execution_time:.6f} seconds")
 
             for mask in masks:
                 mask = mask.squeeze(0) if mask.shape[0] == 1 else mask
                 mask_base = np.where(mask_base + mask > 0, 1, 0)
                 img_overlay = show_mask(mask, img_overlay, plt.gca())
-        end_time = time.time()
-        execution_time = end_time - start_time
+        # end_time = time.time()
+        # execution_time = end_time - start_time
         # print(f"SAM execution time: {execution_time:.6f} seconds")
 
         for (x1, y1, x2, y2), conf_score, category in zip(input_boxes, conf, cat):
@@ -247,12 +253,12 @@ class SAM2:
         timestamp = data.header.stamp
 
         # Perform detection using YOLOv7 model
-        start_time = time.time()
+        yolo_start_time = time.time()
         results = self.model(cv_img)  # Get predictions from YOLOv7
         names = self.model.names
-        end_time = time.time()
-        execution_time = end_time - start_time
-        # print(f"YOLO execution time: {execution_time:.6f} seconds")
+        yolo_end_time = time.time()
+        execution_time = yolo_end_time - yolo_start_time
+        print(f"YOLO execution time: {execution_time:.6f} seconds")
 
         # print("Detection results:", results)
         self.publish_results(results,names, timestamp)  # Publish the results (boxes, labels, etc.)

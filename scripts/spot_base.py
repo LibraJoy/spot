@@ -192,6 +192,10 @@ goal_mode = ["subscribe", "click"]
 
 class spotMoveBase:
     def __init__(self):
+        
+        # params:
+        self.reach_tolerance = 0.15
+        
         # pass
         self.rate = rospy.Rate(15)
 
@@ -370,7 +374,7 @@ class spotMoveBase:
         [dx, dy, dyaw] = self.goal
         current_heading, current_x, current_y, self.heading = self.get_desired_heading(dx, dy)
         
-        if math.sqrt((current_x - self.goal[0])**2 + (current_y - self.goal[1])**2) < 0.3:
+        if math.sqrt((current_x - self.goal[0])**2 + (current_y - self.goal[1])**2) < self.reach_tolerance:
             rospy.loginfo("goal is too close to current position, skip move command")
             return
         
@@ -409,7 +413,7 @@ class spotMoveBase:
         [dx, dy, dyaw] = self.goal
         current_heading, current_x, current_y, self.heading = self.get_desired_heading(dx, dy)
         
-        if math.sqrt((current_x - self.goal[0])**2 + (current_y - self.goal[1])**2) < 0.3:
+        if math.sqrt((current_x - self.goal[0])**2 + (current_y - self.goal[1])**2) < self.reach_tolerance:
             rospy.loginfo("goal is too close to current position, skip move command")
             return
         
@@ -515,7 +519,7 @@ class spotMoveBase:
                 if mobility_feedback.status == 3:
                     # set reached goal tolerance to 0.15m
                     diff = math.sqrt((self.position[0] - self.goal[0])**2 + (self.position[1] - self.goal[1])**2)
-                    if diff > 0.15:
+                    if diff > self.reach_tolerance:
                         # if move command time out and not reaching the goal, print failed message
                         print(f"move cmd {self.cmd_id} failed due to time out. distance to goal is {diff}")
                     else:
