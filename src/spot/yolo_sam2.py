@@ -17,7 +17,8 @@ import numpy as np
 import sam2
 from sam2.build_sam import build_sam2
 from sam2.sam2_image_predictor import SAM2ImagePredictor
-
+import threading
+import copy
 
 from sensor_msgs.msg import Image
 import rospy
@@ -27,8 +28,8 @@ class SAM2:
     def __init__(self):
         self.w_org = 1280
         self.h_org = 720
-        # self.model_path = "/home/user/spot_ws/src/spot/models/yolov7.pt"
-        self.model_path = "/home/user/spot_ws/src/spot/models/best.7.10.pt"
+        # self.model_path = "/root/spot_ws/src/spot/models/yolov7.pt"
+        self.model_path = "/root/spot_ws/src/spot/models/best.7.10.pt"
         # Load YOLOv7 model
         if torch.cuda.is_available():
             device = torch.device("cuda")
@@ -40,18 +41,18 @@ class SAM2:
             device = torch.device("cpu")
             self.model = yolov7.load(self.model_path)  # YOLOv7 model path
         print(f"using device: {device}")
-        
-        self.img_resized = None
+        self.device = device
         self.bridge = CvBridge()
+        self.sam_infer_complete = True
 
-        if device.type == "cuda":
+        if self.device.type == "cuda":
             # use bfloat16 for the entire notebook
             torch.autocast("cuda", dtype=torch.bfloat16).__enter__()
             # turn on tfloat32 for Ampere GPUs (https://pytorch.org/docs/stable/notes/cuda.html#tensorfloat-32-tf32-on-ampere-devices)
             if torch.cuda.get_device_properties(0).major >= 8:
                 torch.backends.cuda.matmul.allow_tf32 = True
                 torch.backends.cudnn.allow_tf32 = True
-        elif device.type == "mps":
+        elif self.device.type == "mps":
             print(
                 "\nSupport for MPS devices is preliminary. SAM 2 is trained with CUDA and might "
                 "give numerically different outputs and sometimes degraded performance on MPS. "
@@ -64,146 +65,114 @@ class SAM2:
         model_cfg = "configs/sam2.1/sam2.1_hiera_t.yaml"
 
         # print("2")
-        sam2_model = build_sam2(model_cfg, sam2_checkpoint, device=device)
+        sam2_model = build_sam2(model_cfg, sam2_checkpoint, device=self.device)
         self.sam2_predictor = SAM2ImagePredictor(sam2_model)
         self.id=0
         # print("SAM2 model loaded successfully.")
-        self.bag="new"
-        if self.bag=="new":
-            self.img_sub = rospy.Subscriber('/spot_image', Image, self.image_callback)
-        else:
-            self.img_sub = rospy.Subscriber('/yolov7/yolov7/visualization', Image, self.image_callback)
-        # self.img_sub = rospy.Subscriber('/spot_image', Image, self.image_callback)
-        self.yolo_vis_pub = rospy.Publisher('sam/visualization', Image, queue_size=10)
-        self.yolo_detect_pub = rospy.Publisher('sam/detection', Detection2DArray, queue_size=10)
-        self.yolo_mask_pub = rospy.Publisher('sam/mask', Image, queue_size=10)
-        self.img_data = None
+        self.img_sub = rospy.Subscriber('/spot_image', Image, self.image_callback)
+        self.yolo_vis_pub = rospy.Publisher('/sam/visualization', Image, queue_size=10)
+        self.yolo_detect_pub = rospy.Publisher('/sam/detection', Detection2DArray, queue_size=10)
         
+        # Flag to track inference processing
+        self.processing = False  
+        self.latest_image = None  
+        self.lock = threading.Lock()  # Lock for thread-safe access
+        
+        # Start a separate thread for processing images
+        self.processing_thread = threading.Thread(target=self.process_images)
+        self.processing_thread.daemon = True
+        self.processing_thread.start()
+        
+        
+    def image_callback(self, msg):
+        """Receives the latest image and updates the reference for processing."""
+        with self.lock:
+            self.latest_image = msg  # Store only the latest image
+            # print(f"received image: {msg.header.stamp}")
+        # rospy.loginfo("Received new image.")
 
+    def process_images(self):
+        """Continuously process the latest image."""
+        while not rospy.is_shutdown():
+            if self.latest_image and not self.processing:
+                with self.lock:
+                    img_to_process = copy.deepcopy(self.latest_image)  # Get the latest image
+                    self.latest_image = None  # Reset latest image
+                self.run_inference(img_to_process)
 
-
-
-
-    def publish_results(self, results, names, timestamp):
-
-        def show_mask(mask, img, ax=None, random_color=True, borders=True):
-            if mask is None or img is None:
-                print("Error: mask or img is None!")
+    def run_inference(self, msg):
+        """Runs YOLO and SAM2 inference on the given image."""
+        self.processing = True  # Mark as processing
+        try:
+            if msg is None:
+                rospy.loginfo("No image received, skipping processing.")
                 return
+
+            timestamp = msg.header.stamp
+            cv_img = self.bridge.imgmsg_to_cv2(msg, desired_encoding='passthrough').copy()
+            if cv_img.shape[0] == 0  or cv_img.shape[1] == 0 or cv_img.shape[2] == 0:
+                rospy.loginfo("cv_img shape is 0")
+            image_resized = cv2.resize(cv_img, (640, 640))
             
-            # Ensure mask is 8-bit binary
-            mask = mask.astype(np.uint8) * 255  
-            mask_image = np.zeros((*mask.shape, 3), dtype=np.uint8)  # RGB blank image
+            # Convert BGR to RGB and preprocess for YOLO
+            rgb_img = image_resized.transpose((2, 0, 1))[::-1]
+            model_img = torch.from_numpy(np.ascontiguousarray(rgb_img)).float() / 255.0
+            model_img = model_img.unsqueeze(0).to(self.device)
 
-            # Generate color
-            color = np.random.rand(3) if random_color else np.array([1, 0, 0])  # Default red
-            mask_image[mask > 0] = (color * 255).astype(np.uint8)  # Apply color
+            # Run YOLO inference
+            pred = self.model(model_img)
+            p = yolov7.utils.general.non_max_suppression(pred[0], conf_thres=0.8, iou_thres=0.45)
 
-            # Resize mask_image if dimensions don't match
-            if mask_image.shape[:2] != img.shape[:2]:
-                mask_image = cv2.resize(mask_image, (img.shape[1], img.shape[0]))
+            if not p:
+                # rospy.loginfo("No objects detected.")
+                self.yolo_vis_pub.publish(self.bridge.cv2_to_imgmsg(cv_img, encoding="bgr8"))
+                return
 
-            # Ensure img is 3-channel
-            if len(img.shape) == 2 or img.shape[2] == 1:
-                img = cv2.cvtColor(img, cv2.COLOR_GRAY2BGR)
-
-            # Ensure mask_image is 3-channel
-            if mask_image.shape[2] == 1:
-                mask_image = cv2.cvtColor(mask_image, cv2.COLOR_GRAY2BGR)
-
-            # Blend mask with image
-            alpha = 0.6
-            overlay = cv2.addWeighted(img, 1, mask_image, alpha, 0)
-
-            # Save overlayed image
-            # cv2.imwrite('output_image1.png', overlay)
-            # print("Overlay saved as output_image1.png")
-            return overlay
-
-
-
-        start_time = time.time()
-
-        tl=1
-        self.id+=1
-        p = results.pred[0]
-        box, conf, cat = p[:, :4], p[:, 4], p[:, 5]  # Extract all at once
-        input_boxes = box.int() 
-
-        img_overlay = np.array(self.img_data, copy=False)
-
-
-
-
-        # output_filename = f"image{self.id}.png"
-        # output_path = os.path.join(os.path.dirname(__file__), self.bag+'input', output_filename)
-        # os.makedirs(os.path.dirname(output_path), exist_ok=True)
-        # cv2.imwrite(output_path, img_overlay)
-
-
-        image = cv2.cvtColor(img_overlay, cv2.COLOR_BGR2RGB)
-        self.sam2_predictor.set_image(image)
-        masks=None
-        mask_base = np.zeros(img_overlay.shape[:2], dtype=np.uint8)
-
-        if input_boxes.size(0) > 0:
-            masks, scores, _ = self.sam2_predictor.predict(
-                point_coords=None,
-                point_labels=None,
-                box=input_boxes,
-                multimask_output=False,
-            )
+            p = p[0]
+            resized_box = p[:, :4].clone()
             
-            end_time = time.time()
-            execution_time = end_time - start_time
-            print(f"SAM execution time: {execution_time:.6f} seconds")
+            # Scale bounding boxes back to original size
+            scale_x = cv_img.shape[1] / image_resized.shape[1]
+            scale_y = cv_img.shape[0] / image_resized.shape[0]
+            box = p[:, :4].clone()
+            box[:, [0, 2]] *= scale_x
+            box[:, [1, 3]] *= scale_y
+            conf, cat = p[:, 4], p[:, 5]
 
-            for mask in masks:
-                mask = mask.squeeze(0) if mask.shape[0] == 1 else mask
-                mask_base = np.where(mask_base + mask > 0, 1, 0)
-                img_overlay = show_mask(mask, img_overlay, plt.gca())
-        # end_time = time.time()
-        # execution_time = end_time - start_time
-        # print(f"SAM execution time: {execution_time:.6f} seconds")
+            # Run SAM2 segmentation
+            self.sam2_predictor.set_image(cv_img)
+            input_boxes = box.int()
+            masks = None
+            if input_boxes.size(0) > 0:
+                masks, _, _ = self.sam2_predictor.predict(
+                    point_coords=None,
+                    point_labels=None,
+                    box=input_boxes,
+                    multimask_output=False,
+                )
+            if (masks is not None) and len(masks.shape) == 3:
+                masks = np.expand_dims(masks, axis=0)
+            img_overlay = np.array(cv_img)
 
-        for (x1, y1, x2, y2), conf_score, category in zip(input_boxes, conf, cat):
-            label = f"{names[int(category)]} {conf_score * 100:.1f}%"
-            color = (0, 0, 255)  # Red
-            c1, c2 = (x1, y1), (x2, y2)
-            c1 = tuple(map(int, c1))  # Convert c1 to tuple of integers
-            c2 = tuple(map(int, c2))  # Convert c2 to tuple of integers
-            cv2.rectangle(img_overlay, c1, c2, color, tl, lineType=cv2.LINE_AA)
+            # Draw bounding boxes and publish results
+            for i in range(len(box)):
+                label = f"{self.model.names[int(cat[i])]} {conf[i] * 100:.1f}%"
+                color = [random.randint(0, 255) for _ in range(3)]
+                c1, c2 = (int(box[i][0]), int(box[i][1])), (int(box[i][2]), int(box[i][3]))
+                cv2.rectangle(img_overlay, c1, c2, color, 3, lineType=cv2.LINE_AA)
+                cv2.putText(img_overlay, label, (c1[0], c1[1] - 2), 0, 1, (225, 255, 255), 1, lineType=cv2.LINE_AA)
+                img_overlay = self.show_mask(masks[i], img_overlay, plt.gca()) if masks is not None else None
 
-            tf = max(tl - 1, 1)
-            t_size = cv2.getTextSize(label, 0, fontScale=tl / 3, thickness=tf)[0]
-            c2 = (c1[0] + t_size[0], c1[1] - t_size[1] - 3)
-            cv2.rectangle(img_overlay, c1, c2, color, -1, cv2.LINE_AA)
-            cv2.putText(img_overlay, label, (c1[0], c1[1] - 2), 0, tl / 3, (225, 255, 255), thickness=tf, lineType=cv2.LINE_AA)
+            self.publish_bbox(box, cat, conf, timestamp, masks)
+            self.yolo_vis_pub.publish(self.bridge.cv2_to_imgmsg(img_overlay, encoding="bgr8"))
+        except CvBridgeError as e:
+            rospy.logerr(f"CV Bridge error: {e}")
+        except Exception as e:
+            rospy.logerr(f"Error in inference: {e}")
+        finally:
+            self.processing = False  # Mark as done processing
         
-        
-        
-        # output_filename = f"image{self.id}.png"
-        # output_path = os.path.join(os.path.dirname(__file__), self.bag+'output', output_filename)
-        # os.makedirs(os.path.dirname(output_path), exist_ok=True)
-        # cv2.imwrite(output_path, img_overlay)
-
-
-
-
-        ros_img = self.bridge.cv2_to_imgmsg(img_overlay, encoding="bgr8")
-
-        mask_base = (mask_base * 255).astype(np.uint8)
-        mask_base = PIL.Image.fromarray(mask_base)
-        mask_base = self.bridge.cv2_to_imgmsg(np.array(mask_base), encoding="mono8")
-        self.yolo_mask_pub.publish(mask_base)
-
-
-        self.yolo_vis_pub.publish(ros_img)
-
-        self.publish_bbox(timestamp, box, cat, conf, names, masks)
-
-
-    def publish_bbox(self, timestamp, box, cat, conf,names,masks=None):
+    def publish_bbox(self, box, cat, conf, timestamp, masks=None):
 
         bbox_msg = Detection2DArray()
         bbox_msg.detections = []
@@ -238,30 +207,40 @@ class SAM2:
             bbox_msg.detections.append(bbox)
 
         bbox_msg.header.stamp = timestamp
-        bbox_msg.header.frame_id = 'sams2yolo_bbox'
+        bbox_msg.header.frame_id = 'map'
         self.yolo_detect_pub.publish(bbox_msg)
 
-    def image_callback(self, data):
-        try:
-            # Convert ROS image to OpenCV format
-            cv_img = self.bridge.imgmsg_to_cv2(data, "bgr8")
-            self.img_data = cv_img  # Store the image data
-        except CvBridgeError as e:
-            print(e)
+    def show_mask(self, mask, img, ax=None, random_color=True, borders=True):
+        if mask is None or img is None:
+            print("Error: mask or img is None!")
+            return
 
-        # get timestamp from data
-        timestamp = data.header.stamp
+        # Ensure mask is 8-bit binary
+        mask = mask.astype(np.uint8) * 255  
+        mask_image = np.zeros((*mask.shape, 3), dtype=np.uint8)  # RGB blank image
+        
+        # Generate color
+        color = np.random.rand(3) if random_color else np.array([1, 0, 0])  # Default red
+        mask_image[mask > 0] = (color * 255).astype(np.uint8)  # Apply color
 
-        # Perform detection using YOLOv7 model
-        yolo_start_time = time.time()
-        results = self.model(cv_img)  # Get predictions from YOLOv7
-        names = self.model.names
-        yolo_end_time = time.time()
-        execution_time = yolo_end_time - yolo_start_time
-        print(f"YOLO execution time: {execution_time:.6f} seconds")
+        # Resize mask_image if dimensions don't match
+        mask_image = mask_image[0]
+        if mask_image.shape[:2] != img.shape[:2]:
+            mask_image = cv2.resize(mask_image, (img.shape[1], img.shape[0]))
 
-        # print("Detection results:", results)
-        self.publish_results(results,names, timestamp)  # Publish the results (boxes, labels, etc.)
+
+        # Ensure img is 3-channel
+        if len(img.shape) == 2 or img.shape[2] == 1:
+            img = cv2.cvtColor(img, cv2.COLOR_GRAY2BGR)
+
+        # Ensure mask_image is 3-channel
+        if mask_image.shape[2] == 1:
+            mask_image = cv2.cvtColor(mask_image, cv2.COLOR_GRAY2BGR)
+        # Blend mask with image
+        alpha = 0.6
+        overlay = cv2.addWeighted(img, 1, mask_image, alpha, 0)
+
+        return overlay
 
 if __name__ == '__main__':
     rospy.init_node('sam2', anonymous=True)

@@ -64,8 +64,7 @@ class yolo_seg:
         ## new - add the GPU as the device
         self.device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
         print(f"Yolo device: {self.device}")
-        # self.model = YOLO("/root/spot_ws/src/spot/models/yolov8m-seg.pt")
-        self.model = YOLO("/home/user/spot_ws/src/spot/models/yolov8m-seg.pt") # temporarily use for spot_sam2 image
+        self.model = YOLO("/root/spot_ws/src/spot/models/yolov8m-seg.pt")
         self.model.to(self.device)
         print(f"model is on device: {self.model.device}")
         self.last_time = None
@@ -195,9 +194,6 @@ class spotMoveBase:
         
         # params:
         self.reach_tolerance = 0.15
-        
-        # pass
-        self.rate = rospy.Rate(15)
 
         self.cmd_id = None
         self.rotate_cmd_id = None
@@ -205,8 +201,8 @@ class spotMoveBase:
         self.img = None
         self.img_received = False
         self.heading = None
-        self.v_lin = 0.75
-        self.v_ang = 0.6
+        self.v_lin = 0.5
+        self.v_ang = 0.4
         self.mobility_params = self.set_mobility_params(self.v_lin, self.v_lin, self.v_ang, -self.v_lin, -self.v_lin, -self.v_ang)
         self.position = None
 
@@ -273,7 +269,6 @@ class spotMoveBase:
         # start webrtc thread
         webrtc_thread.start()
 
-        # rate = rospy.Rate(20)
         while not rospy.is_shutdown():
             c = cv2.waitKey(1)
             if c == 27:
