@@ -212,8 +212,8 @@ class spotMoveBase(Node):
         self.goal_mode = "subscribe"
 
         # detection model
-        # self.detection_model = "yolov8"
-        self.detection_model = "yolov7-sam2"
+        self.detection_model = "yolov8"
+        #self.detection_model = "yolov7-sam2"
 
         # ROS 2
         self.tf_broadcaster = tf2_ros.TransformBroadcaster(self)
