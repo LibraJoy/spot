@@ -655,24 +655,24 @@ class spotMoveBase(Node):
     def path_callback(self, path_msg):
         self.move()
 
-    def main(args=None):
-        while True:
-            if spot.connect():
-                break
-            else:
-                print("connection fails")
+def main(args=None):
+    while True:
+        if spot.connect():
+            break
+        else:
+            print("connection fails")
 
-        print("begin")
-        rclpy.init(args=args)
-        spot_move_base = spotMoveBase()
-        try:
-            rclpy.spin(spot_move_base)
-        except KeyboardInterrupt:
-            pass
-        finally:
-            spot_move_base.endSpot()
-            spot_move_base.destroy_node()
-            rclpy.shutdown()
+    print("begin")
+    rclpy.init(args=args)
+    spot_move_base = spotMoveBase()
+    try:
+        rclpy.spin(spot_move_base)
+    except KeyboardInterrupt:
+        pass
+    finally:
+        spot_move_base.endSpot()
+        spot_move_base.destroy_node()
+        rclpy.shutdown()
 
 if __name__ == '__main__':
     main()
