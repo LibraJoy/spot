@@ -130,7 +130,7 @@ class yolo_seg:
                 # import pdb; pdb.set_trace()
                 mask = PIL.Image.fromarray(mask)
                 mask = self.bridge.cv2_to_imgmsg(np.array(mask), encoding="mono8")
-                detection.source_img = mask
+                #detection.source_img = mask
                 detection_array.detections.append(detection)
             
             mask_base = (mask_base * 255).astype(np.uint8)
