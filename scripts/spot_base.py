@@ -64,7 +64,7 @@ class yolo_seg:
         ## new - add the GPU as the device
         self.device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
         print(f"Yolo device: {self.device}")
-        self.model = YOLO("/root/spot_ws/src/spot/models/yolov8m-seg.pt")
+        self.model = YOLO("home/cerlab/spot_ws/src/spot/models/yolov8m-seg.pt")
         self.model.to(self.device)
         print(f"model is on device: {self.model.device}")
         self.last_time = None
