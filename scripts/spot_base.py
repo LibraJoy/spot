@@ -41,7 +41,7 @@ import torch
 import os
 import random
 import threading
-from spot.yolo_sam2 import SAM2
+#from spot.yolo_sam2 import SAM2
 # yolo v8
 import PIL.Image
 import cv2
@@ -64,7 +64,7 @@ class yolo_seg:
         ## new - add the GPU as the device
         self.device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
         print(f"Yolo device: {self.device}")
-        self.model = YOLO("home/cerlab/spot_ws/src/spot/models/yolov8m-seg.pt")
+        self.model = YOLO("/home/cerlab/spot_ws/src/spot/models/yolov8m-seg.pt")
         self.model.to(self.device)
         print(f"model is on device: {self.model.device}")
         self.last_time = None
@@ -113,13 +113,13 @@ class yolo_seg:
                 #     continue
                 detection = Detection2D()
                 result = ObjectHypothesisWithPose()
-                result.id = int(r.boxes.cls[j])
-                result.score = float(r.boxes.conf[j])
+                result.hypothesis.class_id = str(int(r.boxes.cls[j]))
+                result.hypothesis.score = float(r.boxes.conf[j])
                 detection.results.append(result)
-                detection.bbox.center.x = r.boxes.xywh[j][0]
-                detection.bbox.center.y = r.boxes.xywh[j][1]
-                detection.bbox.size_x = r.boxes.xywh[j][2]
-                detection.bbox.size_y = r.boxes.xywh[j][3]
+                detection.bbox.center.position.x = float(r.boxes.xywh[j][0])
+                detection.bbox.center.position.y = float(r.boxes.xywh[j][1])
+                detection.bbox.size_x = float(r.boxes.xywh[j][2])
+                detection.bbox.size_y = float(r.boxes.xywh[j][3])
                 mask = r.masks.data[j,:,:]
                 mask = mask.cpu().numpy().astype(np.uint8)
                 # any pixel is not 0 in either mask_base or mask, set it to 1. else set it to 0
@@ -619,14 +619,14 @@ class spotMoveBase(Node):
         for i in range(len(box)):
             bbox = Detection2D()
 
-            bbox.bbox.center.x = (int(box[i][0]) + int(box[i][2])) / 2
-            bbox.bbox.center.y = (int(box[i][1]) + int(box[i][3])) / 2
+            bbox.bbox.center.position.x = (int(box[i][0]) + int(box[i][2])) / 2
+            bbox.bbox.center.position.y = (int(box[i][1]) + int(box[i][3])) / 2
             bbox.bbox.size_x = abs(int(box[i][2]) - int(box[i][0]))
             bbox.bbox.size_y = abs(int(box[i][3]) - int(box[i][1]))
 
             hypothesis = ObjectHypothesisWithPose()
-            hypothesis.id = int(cat[i])
-            hypothesis.score = conf[i]
+            hypothesis.hypothesis.class_id = str(int(cat[i]))
+            hypothesis.hypothesis.score = float(conf[i])
             bbox.results.append(hypothesis)
             
             bbox_msg.detections.append(bbox)
