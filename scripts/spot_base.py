@@ -5,7 +5,7 @@ from rclpy.qos import QoSProfile, ReliabilityPolicy, HistoryPolicy
 from sensor_msgs.msg import Image
 from vision_msgs.msg import Detection2DArray, Detection2D, ObjectHypothesisWithPose
 from cv_bridge import CvBridge, CvBridgeError
-from spot.msg import SemanticLabel
+#from spot.msg import SemanticLabel
 from geometry_msgs.msg import PoseStamped
 import spot_ros2.spot_spot as spot
 import spot_ros2.spot_move as spot_move
@@ -634,7 +634,7 @@ class spotMoveBase(Node):
             bbox_msg.header.frame_id = 'yolo_bbox'
 
         self.bbox_pub.publish(bbox_msg)
-
+    '''
     def publish_sem_label(self, model, cat):
         labels_msg = SemanticLabel()
         labels_msg.ids = []
@@ -648,7 +648,7 @@ class spotMoveBase(Node):
             labels_msg.labels.append(label)
 
         self.label_pub.publish(labels_msg)
-
+    '''
     def goal_reached_callback(self, status):
         pass
 
