@@ -7,9 +7,9 @@ from vision_msgs.msg import Detection2DArray, Detection2D, ObjectHypothesisWithP
 from cv_bridge import CvBridge, CvBridgeError
 from spot.msg import SemanticLabel
 from geometry_msgs.msg import PoseStamped
-import spot.spot_spot as spot
-import spot.spot_move as spot_move
-import spot.spot_webrtc as spot_webrtc
+import spot_ros2.spot_spot as spot
+import spot_ros2.spot_move as spot_move
+import spot_ros2.spot_webrtc as spot_webrtc
 
 import cv2
 import time
