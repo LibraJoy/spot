@@ -71,7 +71,7 @@ class SAM2:
         # print("SAM2 model loaded successfully.")
         self.img_sub = rospy.Subscriber('/spot_image', Image, self.image_callback)
         self.yolo_vis_pub = rospy.Publisher('/sam/visualization', Image, queue_size=10)
-        self.yolo_detect_pub = rospy.Publisher('/sam/detection', Detection2DArray, queue_size=10)
+        self.yolo_detect_pub = rospy.Publisher('/yolo/detection', Detection2DArray, queue_size=10)
         
         # Flag to track inference processing
         self.processing = False  
@@ -95,10 +95,13 @@ class SAM2:
         """Continuously process the latest image."""
         while not rospy.is_shutdown():
             if self.latest_image and not self.processing:
+                start_time = time.time()  # Start timer for processing
                 with self.lock:
                     img_to_process = copy.deepcopy(self.latest_image)  # Get the latest image
                     self.latest_image = None  # Reset latest image
                 self.run_inference(img_to_process)
+                end_time = time.time()  # End timer for processing
+                rospy.loginfo(f"Image processing time: {end_time - start_time:.2f} seconds")
 
     def run_inference(self, msg):
         """Runs YOLO and SAM2 inference on the given image."""

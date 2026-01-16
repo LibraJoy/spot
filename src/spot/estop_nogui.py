@@ -62,6 +62,7 @@ def main(argv):
     any way to trigger an estop from the terminal.
     """
     argv.append("10.0.0.3")
+    # argv.append("192.168.80.3")
     parser = argparse.ArgumentParser()
     bosdyn.client.util.add_base_arguments(parser)
     parser.add_argument('-t', '--timeout', type=float, default=5, help='Timeout in seconds')

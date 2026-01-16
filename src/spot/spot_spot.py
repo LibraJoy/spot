@@ -19,6 +19,7 @@ from bosdyn.client.robot_command import RobotCommandBuilder, RobotCommandClient,
 from bosdyn.client.robot_state import RobotStateClient
 from bosdyn.client import math_helpers
 from bosdyn.client.frame_helpers import ODOM_FRAME_NAME, VISION_FRAME_NAME, BODY_FRAME_NAME, get_se2_a_tform_b
+from bosdyn.client.keepalive import KeepaliveClient
 
 from bosdyn import geometry
 from bosdyn.api import geometry_pb2, image_pb2, trajectory_pb2, world_object_pb2
@@ -41,6 +42,7 @@ hostname = '10.0.0.3'
 
 command_client = None
 lease_client = None
+lease_keep_alive = None
 
 def _connect():
     global hostname
@@ -49,11 +51,22 @@ def _connect():
     global robot_state_client
     global command_client
     global lease_client
+    global lease_keep_alive
     global pan
     global tilt
     global zoom
     
     """A simple example of using the Boston Dynamics API to command a Spot robot."""
+
+    # Clean up any stale lease keep-alive from previous connections
+    if lease_keep_alive is not None:
+        try:
+            print("Shutting down stale lease keep-alive...")
+            lease_keep_alive.shutdown()
+        except Exception as e:
+            print(f"Warning: Error shutting down stale lease keep-alive: {e}")
+        finally:
+            lease_keep_alive = None
 
     # The Boston Dynamics Python library uses Python's logging module to
     # generate output. Applications using the library can specify how
@@ -101,6 +114,27 @@ def _connect():
     assert not robot.is_estopped(), "Robot is estopped. Please use an external E-Stop client, " \
                                     "such as the estop SDK example, to configure E-Stop."
 
+    # Clear any stale keepalive policies that might prevent power-on
+    print("Checking for stale keepalive policies...")
+    robot.logger.info("Checking for stale keepalive policies...")
+    try:
+        keepalive_client = robot.ensure_client(KeepaliveClient.default_service_name)
+        status = keepalive_client.get_status()
+
+        if status.status:
+            policy_ids = [p.policy_id for p in status.status]
+            print(f"Found {len(policy_ids)} stale keepalive policies, removing...")
+            robot.logger.info(f"Removing {len(policy_ids)} stale keepalive policies")
+            keepalive_client.modify_policy(policy_ids_to_remove=policy_ids)
+            print("Stale keepalive policies cleared")
+            robot.logger.info("Stale keepalive policies cleared")
+        else:
+            print("No stale keepalive policies found")
+            robot.logger.info("No stale keepalive policies found")
+    except Exception as e:
+        print(f"Warning: Could not clear keepalive policies: {e}")
+        robot.logger.warning(f"Could not clear keepalive policies: {e}")
+
     # Only one client at a time can operate a robot. Clients acquire a lease to
     # indicate that they want to control a robot. Acquiring may fail if another
     # client is currently controlling the robot. When the client is done
@@ -109,31 +143,39 @@ def _connect():
     # the lease for us.
     robot.logger.info("Acquiring lease...")
     lease_client = robot.ensure_client(bosdyn.client.lease.LeaseClient.default_service_name)
+    lease_keep_alive = bosdyn.client.lease.LeaseKeepAlive(
+        lease_client,
+        must_acquire=True,
+        return_at_exit=True,
+    )
 
     # Setup clients for the robot state and robot command services.
     robot.logger.info("Setting up clients...")
     robot_state_client = robot.ensure_client(RobotStateClient.default_service_name)
     robot_command_client = robot.ensure_client(RobotCommandClient.default_service_name)
+    # Keep legacy command_client in sync
+    command_client = robot_command_client
     robot.logger.info("Ready to power on robot.")
-    with bosdyn.client.lease.LeaseKeepAlive(lease_client, must_acquire=True, return_at_exit=False):
-        # Now, we are ready to power on the robot. This call will block until the power
-        # is on. Commands would fail if this did not happen. We can also check that the robot is
-        # powered at any point.
-        robot.logger.info("Powering on robot... This may take several seconds.")
-        robot.power_on(timeout_sec=20)
-        assert robot.is_powered_on(), "Robot power on failed."
-        robot.logger.info("Robot powered on.")
+    # Now, we are ready to power on the robot. This call will block until the power
+    # is on. Commands would fail if this did not happen. We can also check that the robot is
+    # powered at any point.
+    robot.logger.info("Powering on robot... This may take several seconds.")
+    robot.power_on(timeout_sec=20)
+    assert robot.is_powered_on(), "Robot power on failed."
+    robot.logger.info("Robot powered on.")
 
-        # Tell the robot to stand up. The command service is used to issue commands to a robot.
-        # The set of valid commands for a robot depends on hardware configuration. See
-        # SpotCommandHelper for more detailed examples on command building. The robot
-        # command service requires timesync between the robot and the client.
-        robot.logger.info("Set robot to accept command...")
-        command_client = robot.ensure_client(RobotCommandClient.default_service_name)
-        #blocking_stand(command_client, timeout_sec=10)
-        #robot.logger.info("Robot standing.")
-        enable_obstacle_avoidance()
-        print("current battery charge status: ", battery_status())
+    # Tell the robot to stand up. The command service is used to issue commands to a robot.
+    # The set of valid commands for a robot depends on hardware configuration. See
+    # SpotCommandHelper for more detailed examples on command building. The robot
+    # command service requires timesync between the robot and the client.
+    # robot.logger.info("Set robot to accept stand command...")
+    # command_client = robot.ensure_client(RobotCommandClient.default_service_name)
+    #blocking_stand(command_client, timeout_sec=10)
+    #robot.logger.info("Robot standing.")
+    
+    # Enable obstacle avoidance
+    enable_obstacle_avoidance()
+    print("current battery charge status: ", battery_status())
 
 def set_default_body_control():
     """Set default body control params to current body position"""
@@ -159,9 +201,11 @@ def sit():
     global command_client
     try:
         blocking_sit(command_client, timeout_sec=10)
+        print("Spot sit command sent")
         return True
     except Exception as exc:  # pylint: disable=broad-except
         logger = bosdyn.client.util.get_logger()
+        print("Spot sit command failed: %r", exc)
         logger.error("Hello, Spot! threw an exception: %r", exc)
         return False
 
@@ -192,12 +236,14 @@ def connect():
     except Exception as exc:  # pylint: disable=broad-except
         logger = bosdyn.client.util.get_logger()
         logger.error("Hello, Spot! threw an exception: %r", exc)
+        print(f"Connection exception: {type(exc).__name__}: {exc}")
         return False
     
 def _disconnect():
     global robot
     global command_client
     global lease_client
+    global lease_keep_alive
 
     # Log a comment.
     # Comments logged via this API are written to the robots test log. This is the best way
@@ -215,6 +261,12 @@ def _disconnect():
     robot.power_off(cut_immediately=False, timeout_sec=20)
     assert not robot.is_powered_on(), "Robot power off failed."
     robot.logger.info("Robot safely powered off.")
+    print("Robot safely powered off.")
+
+    if lease_keep_alive is not None:
+        lease_keep_alive.shutdown()
+        lease_keep_alive = None
+        print("Lease keep-alive shutdown.")
 
 def disconnect():
     try:

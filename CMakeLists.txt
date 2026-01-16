@@ -116,7 +116,7 @@ generate_messages(
 catkin_package(
 #  INCLUDE_DIRS include
 #  LIBRARIES spot
- CATKIN_DEPENDS rospy std_msgs sensor_msgs geometry_msgs cv_bridge nav_msgs vision_msgs message_runtime pcl_conversions tf2_ros
+ CATKIN_DEPENDS rospy std_msgs sensor_msgs geometry_msgs cv_bridge nav_msgs vision_msgs message_runtime tf2_ros
 #  DEPENDS system_lib
 )
 
@@ -176,6 +176,7 @@ catkin_install_python(PROGRAMS
   scripts/yolo_res_pub.py
   scripts/uav_yolo_res_pub.py
   scripts/repub_lidar_debug.py
+  scripts/yolov7.py
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
 

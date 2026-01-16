@@ -56,11 +56,22 @@ from cv_bridge import CvBridge, CvBridgeError
 from vision_msgs.msg import Detection2DArray, Detection2D, BoundingBox2D, ObjectHypothesisWithPose
 import tf2_ros
 
-detection_model = ["yolov8", "yolov7-sam2"]
+# # Import the YOLOv7+SAM2 immediate detector
+# import sys
+# import os
+# sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+# import importlib.util
+# spec = importlib.util.spec_from_file_location("yolov7_detector", os.path.join(os.path.dirname(os.path.abspath(__file__)), "yolov7.py"))
+# yolov7_detector = importlib.util.module_from_spec(spec)
+# spec.loader.exec_module(yolov7_detector)
+# YOLOv7 = yolov7_detector.YOLOv7
+
 class yolo_seg:
     def __init__(self):
-        self.w_org = 1280
-        self.h_org = 720
+        # self.w_org = 1280
+        # self.h_org = 720
+        self.w_org = None
+        self.h_org = None
         ## new - add the GPU as the device
         self.device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
         print(f"Yolo device: {self.device}")
@@ -73,8 +84,8 @@ class yolo_seg:
         self.bridge = CvBridge()
         self.img_sub = rospy.Subscriber('/spot_image', Image, self.image_callback)
         self.yolo_vis_pub = rospy.Publisher('/yolo/visualization', Image, queue_size=10)
-        self.yolo_detect_pub = rospy.Publisher('/yolo/detection', Detection2DArray, queue_size=10)
         self.yolo_mask_pub = rospy.Publisher('/yolo/mask', Image, queue_size=10)
+        self.yolo_detect_pub = rospy.Publisher('/yolo/detection', Detection2DArray, queue_size=10)        
         self.img_data = None
         # self.obj_label_of_interest = [56, 57, 60, 62]
 
@@ -82,7 +93,7 @@ class yolo_seg:
         for i, r in enumerate(results):
             # Plot results image
             im_bgr = r.plot()  # BGR-order numpy array
-            im_rgb = PIL.Image.fromarray(im_bgr[..., ::-1])  # RGB-order PIL image
+            im_rgb = PIL.Image.fromarray(im_bgr[..., ::-1])  # RGB-order PIL image  
 
             # Show results to screen (in supported environments)
             r.show()
@@ -91,20 +102,28 @@ class yolo_seg:
             r.save(filename=f"results{i}.jpg")
 
     def publish_results(self, results):
+        if (self.w_org is None) or (self.h_org is None):
+            # If the original image size is not set, skip publishing
+            rospy.logwarn("Original image size not set, skipping YOLOv8 results publishing.")
+            return
+        # Use real-time timestamp to avoid collisions with YOLOv7+SAM2
+        inference_completion_time = rospy.Time.now()
         detection_array = Detection2DArray()
-        detection_array.header.stamp = self.img_data.header.stamp
-        detection_array.header.frame_id = "yolo_result"
+        detection_array.header.stamp = inference_completion_time
+        # Set frame_id based on detection mode for collision avoidance
+        detection_array.header.frame_id = "yolov8_detections"
+        
         for i, r in enumerate(results): # i always 0
             # publish visualizaiton image
             im_bgr = r.plot()  # BGR-order numpy array
             ros_img = self.bridge.cv2_to_imgmsg(im_bgr, encoding="bgr8")
             self.yolo_vis_pub.publish(ros_img)
-
             # publish detection results
-            
             if r.boxes.cls.shape[0] == 0:
+                # Publish empty detection array with YOLOv8 frame_id
+                self.yolo_detect_pub.publish(detection_array)
                 return
-            # print("r.boxes.cls.shape: ", r.boxes.cls.shape)
+            
             # make an empty mask
             mask_base = np.zeros((self.h_org, self.w_org), dtype=np.uint8)
             for j in range(r.boxes.cls.shape[0]): # number of bounding boxes in current frame
@@ -134,10 +153,10 @@ class yolo_seg:
             
             mask_base = (mask_base * 255).astype(np.uint8)
             mask_base = PIL.Image.fromarray(mask_base)
-            mask_base = self.bridge.cv2_to_imgmsg(np.array(mask_base), encoding="mono8")
-            self.yolo_mask_pub.publish(mask_base)
-
+            mask_base_msg = self.bridge.cv2_to_imgmsg(np.array(mask_base), encoding="mono8")
+            self.yolo_mask_pub.publish(mask_base_msg)
             
+            # Publish to shared /yolo/detection topic
             self.yolo_detect_pub.publish(detection_array)
         
  
@@ -145,10 +164,13 @@ class yolo_seg:
     def image_callback(self, data):
         try:
             cv_img = self.bridge.imgmsg_to_cv2(data, "bgr8")
+
             self.img_data = data
         except CvBridgeError as e:
             print(e)
-
+        self.h_org = cv_img.shape[0]
+        self.w_org = cv_img.shape[1]
+        start_time = time.time()
         results = self.model.predict(source=cv_img, save=False, save_txt=False, stream=True, verbose=False)
         # self.plot(results)
         self.publish_results(results)
@@ -201,8 +223,8 @@ class spotMoveBase:
         self.img = None
         self.img_received = False
         self.heading = None
-        self.v_lin = 0.5
-        self.v_ang = 0.4
+        self.v_lin = 0.55
+        self.v_ang = 0.5
         self.mobility_params = self.set_mobility_params(self.v_lin, self.v_lin, self.v_ang, -self.v_lin, -self.v_lin, -self.v_ang)
         self.position = None
 
@@ -210,8 +232,9 @@ class spotMoveBase:
         self.goal_mode = "subscribe"
 
         # detection model
-        # self.detection_model = "yolov8"
-        self.detection_model = "yolov7-sam2"
+        self.detection_model = "yolov8"          # YOLOv8 only
+        # self.detection_model = "yolov7-sam2"     # YOLOv7+SAM2 only  
+        # self.detection_model = "v7+v8"             # Both YOLOv8 and YOLOv7+SAM2 simultaneously
 
         # ROS
         self.tf_broadcaster = tf2_ros.TransformBroadcaster()
@@ -226,15 +249,22 @@ class spotMoveBase:
         rospy.Timer(rospy.Duration(0.03), self.odom_pub_timer_callback)
         rospy.Timer(rospy.Duration(0.05), self.move_status_check_timer_callback)
 
-        # self.yolo = yolo_seg()
+        # Initialize detectors with detection_model parameter for topic routing
         if self.detection_model == "yolov8":
             self.yolo = yolo_seg()
+            rospy.loginfo("Initialized YOLOv8 detector only")
         elif self.detection_model == "yolov7-sam2":
             # SAM2 instance
-            self.sam2 = SAM2()
+            self.yolov7_sam2_detector = YOLOv7(detection_model=self.detection_model)
+            rospy.loginfo("Initialized YOLOv7+SAM2 detector only")
+        elif self.detection_model == "v7+v8":
+            # Initialize both detectors for parallel operation with shared topic routing
+            self.yolo = yolo_seg()
+            self.yolov7_sam2_detector = YOLOv7(detection_model=self.detection_model)
+            rospy.loginfo("Both detectors will publish to /yolo/detection for unified detection stream")
 
         self.bridge = CvBridge()
-        spot.set_screen('pano_full')
+        # spot.set_screen('pano_full')
         self.startMonitor(spot.hostname, spot.robot)
 
         rospy.Timer(rospy.Duration(0.1), self.raw_img_callback)
@@ -251,11 +281,26 @@ class spotMoveBase:
         spot_webrtc.frameR = None
         # spot.set_screen('mech_full')  # PTZ camera
         #spot.set_screen('digi_full')
-        spot.set_screen('pano_full') # for searching window
-        #spot.set_screen('c0')
-        #   spot.stand()
-        # Suppress all exceptions and log them instead.
-        #sys.stderr = InterceptStdErr()
+        spot.set_screen('pano_full')
+        current_screen = spot.get_screen()
+        rospy.loginfo(f"Current screen mode: {current_screen}")
+        # try:
+        #     available_screens = spot.list_screens()
+        #     rospy.loginfo(f"Available screen modes: {available_screens}")
+            
+        #     current_screen = spot.get_screen()
+        #     rospy.loginfo(f"Current screen mode: {current_screen}")
+            
+        #     try:
+        #         spot.set_screen('mech_full')
+        #         spot.logger.info("Screen set to mech_full")
+        #     except Exception as screen_error:
+        #         robot.logger.warning(f"Failed to set screen: {screen_error}")
+
+        # except Exception as e:
+        #     rospy.logwarn(f"Failed to set pano view: {e}")
+        #     rospy.loginfo("Continuing with default")
+
 
         spot_webrtc.frameCount = 0
         spot_webrtc.frameR = None
@@ -292,6 +337,10 @@ class spotMoveBase:
         if self.img_received:
             # self.rgb = spot_webrtc.rgbImage.copy()
             self.img = spot_webrtc.cvImage.copy()
+            # Crop image to 1280x400, remove the upper part of the image
+            # self.img = self.img[400:720, 0:1280]
+            # Resize image resolution to original size
+            # self.img = cv2.resize(self.img, (1280, 720))
             self.publish_image_to_ros(self.img)
             self.img_yolo = spot_webrtc.rgbImage.copy()
             # convert img_yolo to torch and move to cuda
@@ -362,7 +411,7 @@ class spotMoveBase:
         
         # print("in goal pose sub callback")
         if self.goal[0] == msg.pose.position.x and self.goal[1] == msg.pose.position.y:
-            rospy.loginfo("subscribed goal has not changed, do not upddate command")
+            rospy.loginfo("subscribed goal has not changed (x: %f, y: %f), do not upddate command", self.goal[0], self.goal[1])
             return
         #  Check distance between current position and goal
         self.goal = [msg.pose.position.x, msg.pose.position.y, 0]
@@ -663,10 +712,18 @@ if __name__ == '__main__':
             break
         else:
             print("connection fails")
-    
+
     print("begin")
     rospy.init_node('spot_base', anonymous=True)
-    
+
+    def _shutdown_hook():
+        try:
+            spot.disconnect()
+        except Exception as exc:  # pylint: disable=broad-except
+            rospy.logwarn("Spot disconnect failed during shutdown: %s", exc)
+
+    rospy.on_shutdown(_shutdown_hook)
+
     spot_move_base = spotMoveBase()
     
     rospy.spin()
