@@ -1,0 +1,962 @@
+#!/usr/bin/env python3
+import rclpy
+from rclpy.node import Node
+from rclpy.qos import QoSProfile, ReliabilityPolicy, HistoryPolicy, DurabilityPolicy
+from sensor_msgs.msg import Image
+from vision_msgs.msg import Detection2DArray, Detection2D, ObjectHypothesisWithPose
+from cv_bridge import CvBridge, CvBridgeError
+#from spot.msg import SemanticLabel
+from geometry_msgs.msg import PoseStamped
+import spot_ros2.spot_spot as spot
+import spot_ros2.spot_move as spot_move
+import spot_ros2.spot_webrtc as spot_webrtc
+
+import cv2
+import time
+import math
+import threading
+import time
+import bosdyn.client
+import bosdyn.client.lease
+import bosdyn.client.util
+import bosdyn.geometry
+import multiprocessing as mp
+import bosdyn.client.math_helpers as math_helpers
+from nav_msgs.msg import Path
+from std_msgs.msg import Bool, String
+from geometry_msgs.msg import PoseStamped, TransformStamped, Twist
+from nav_msgs.msg import Odometry
+from sensor_msgs.msg import BatteryState
+from bosdyn.client.graph_nav import GraphNavClient
+from bosdyn.client.math_helpers import Quat, SE3Pose
+from bosdyn.client.frame_helpers import get_vision_tform_body
+from bosdyn.client.robot_state import RobotStateClient
+from bosdyn.client.frame_helpers import ODOM_FRAME_NAME, VISION_FRAME_NAME, BODY_FRAME_NAME, get_se2_a_tform_b
+from bosdyn.client.robot_command import RobotCommandBuilder, RobotCommandClient, blocking_stand, blocking_sit, blocking_selfright
+from bosdyn.api.basic_command_pb2 import RobotCommandFeedbackStatus
+from bosdyn.api.geometry_pb2 import SE2Velocity, SE2VelocityLimit, Vec2
+from bosdyn.api.spot import robot_command_pb2 as spot_command_pb2
+import bosdyn.geometry
+# from bosdyn.api import geometry_pb2, trajectory_pb2
+from scipy.spatial.transform import Rotation as R
+import numpy as np
+import torch
+import os
+import random
+import threading
+#from spot.yolo_sam2 import SAM2
+# yolo v8
+import PIL.Image
+import cv2
+import PIL
+import torch 
+import numpy as np
+
+from ultralytics import YOLO
+
+from sensor_msgs.msg import Image
+from cv_bridge import CvBridge, CvBridgeError
+from vision_msgs.msg import Detection2DArray, Detection2D, BoundingBox2D, ObjectHypothesisWithPose
+import tf2_ros
+
+detection_model = ["yolov8", "yolov7-sam2"]
+class yolo_seg:
+    def __init__(self, node: Node):
+        self.w_org = 1280
+        self.h_org = 720
+        ## new - add the GPU as the device
+        self.device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
+        print(f"Yolo device: {self.device}")
+        self.model = YOLO("/home/cerlab/spot_ws/src/spot/models/yolov8m-seg.pt")
+        self.model.to(self.device)
+        print(f"model is on device: {self.model.device}")
+        self.last_time = None
+        ## new
+        self.img_resized = None
+        self.node = node
+        self.bridge = CvBridge()
+        ## qos profile for image publishers and subscribers [to solve /spot_image fps and freeze issue]
+        qos_profile = QoSProfile(
+            reliability=ReliabilityPolicy.BEST_EFFORT,
+            durability=DurabilityPolicy.VOLATILE,
+            depth=10
+        )
+        self.img_sub = self.node.create_subscription(Image, '/spot_image', self.image_callback, qos_profile)
+        self.yolo_vis_pub = self.node.create_publisher(Image, '/yolo/visualization', 10)
+        self.yolo_detect_pub = self.node.create_publisher(Detection2DArray, '/yolo/detection', 10)
+        self.yolo_mask_pub = self.node.create_publisher(Image, '/yolo/mask', 10)
+        self.img_data = None
+        # self.obj_label_of_interest = [56, 57, 60, 62]
+
+    def plot(self, results):
+        for i, r in enumerate(results):
+            # Plot results image
+            im_bgr = r.plot()  # BGR-order numpy array
+            im_rgb = PIL.Image.fromarray(im_bgr[..., ::-1])  # RGB-order PIL image
+
+            # Show results to screen (in supported environments)
+            r.show()
+
+            # Save results to disk
+            r.save(filename=f"results{i}.jpg")
+
+    def publish_results(self, results):
+        detection_array = Detection2DArray()
+        detection_array.header.stamp = self.node.get_clock().now().to_msg()
+        detection_array.header.frame_id = "yolo_result"
+        for i, r in enumerate(results): # i always 0
+            # publish visualizaiton image
+            im_bgr = r.plot()  # BGR-order numpy array
+            ros_img = self.bridge.cv2_to_imgmsg(im_bgr, encoding="bgr8")
+            self.yolo_vis_pub.publish(ros_img)
+
+            # publish detection results
+            
+            if r.boxes.cls.shape[0] == 0:
+                return
+            # print("r.boxes.cls.shape: ", r.boxes.cls.shape)
+            # make an empty mask
+            mask_base = np.zeros((self.h_org, self.w_org), dtype=np.uint8)
+            for j in range(r.boxes.cls.shape[0]): # number of bounding boxes in current frame
+                # if int(r.boxes.cls[j]) not in self.obj_label_of_interest:
+                #     continue
+                detection = Detection2D()
+                result = ObjectHypothesisWithPose()
+                result.hypothesis.class_id = str(int(r.boxes.cls[j]))
+                result.hypothesis.score = float(r.boxes.conf[j])
+                detection.results.append(result)
+                detection.bbox.center.position.x = float(r.boxes.xywh[j][0])
+                detection.bbox.center.position.y = float(r.boxes.xywh[j][1])
+                detection.bbox.size_x = float(r.boxes.xywh[j][2])
+                detection.bbox.size_y = float(r.boxes.xywh[j][3])
+                mask = r.masks.data[j,:,:]
+                mask = mask.cpu().numpy().astype(np.uint8)
+                # any pixel is not 0 in either mask_base or mask, set it to 1. else set it to 0
+                mask = cv2.resize(mask, (self.w_org, self.h_org))
+                # if result.id == 56:
+                mask_base = np.where(mask_base + mask > 0, 1, 0)
+                mask = mask * 255
+                # import pdb; pdb.set_trace()
+                mask = PIL.Image.fromarray(mask)
+                mask = self.bridge.cv2_to_imgmsg(np.array(mask), encoding="mono8")
+                #detection.source_img = mask
+                detection_array.detections.append(detection)
+            
+            mask_base = (mask_base * 255).astype(np.uint8)
+            mask_base = PIL.Image.fromarray(mask_base)
+            mask_base = self.bridge.cv2_to_imgmsg(np.array(mask_base), encoding="mono8")
+            self.yolo_mask_pub.publish(mask_base)
+
+            
+            self.yolo_detect_pub.publish(detection_array)
+        
+ 
+
+    def image_callback(self, data):
+        try:
+            cv_img = self.bridge.imgmsg_to_cv2(data, "bgr8")
+            self.img_data = data
+        except CvBridgeError as e:
+            print(e)
+
+        results = self.model.predict(source=cv_img, save=False, save_txt=False, stream=True, verbose=False)
+        # self.plot(results)
+        self.publish_results(results)
+
+    # make bounding box and semantic mask msg from yolo results->Detection2DArray
+    def make_msg(self, results):
+        print("make_msg")
+        detection_array = Detection2DArray()
+        for i, r in enumerate(results):
+            print("get r")
+            detection = Detection2D()
+            detection.header.stamp = self.node.get_clock().now().to_msg()
+            detection.header.frame_id = "yolo_result"
+            for j in range(r.boxes.cls.shape[0]): # number of bounding boxes in current frame
+                box = BoundingBox2D()
+                box.results[0].id = r.boxes.cls[j]
+                box.results[0].score = r.boxes.conf[j]
+                box.center.x = r.boxes.xywh[j][0]
+                box.center.y = r.boxes.xywh[j][1]
+                box.size_x = r.boxes.xywh[j][2]
+                box.size_y = r.boxes.xywh[j][3]
+                detection.results.append(box)
+            detection_array.detections.append(detection)
+        return detection_array
+
+
+
+robot = None
+robot_state_client = None
+robot_command_client = None
+
+# For check repeated path_msg
+hist_path = None
+
+p = None
+webrtc_thread = None
+shutdown_flag = None
+reached_goal = None
+goal_mode = ["subscribe", "click"]
+
+class spotMoveBase(Node):
+    def __init__(self):
+        super().__init__('spot_base')
+        
+        # params:
+        self.reach_tolerance = 0.15
+
+        self.cmd_id = None
+        self.rotate_cmd_id = None
+        self.rotate_flag = False # rotation needed = True
+        self.img = None
+        self.img_received = False
+        self.heading = None
+        self.v_lin = 0.5
+        self.v_ang = 0.4
+        self.mobility_params = self.set_mobility_params(self.v_lin, self.v_lin, self.v_ang, -self.v_lin, -self.v_lin, -self.v_ang)
+        self.position = None
+
+        # goal mode flag
+        self.goal_mode = "subscribe"
+
+        # detection model
+        self.detection_model = "yolov8"
+        #self.detection_model = "yolov7-sam2"
+
+        # ========== NEW: Teleop Control State ==========
+        self.control_mode = "AUTONOMOUS"  # "AUTONOMOUS" or "TELEOP"
+        self.last_teleop_time = None
+        self.teleop_timeout = 2.5  # Switch back to autonomous after 2.5s without teleop heartbeat
+
+        # Body pose state
+        self.body_height = 0.0
+        self.body_roll = 0.0
+        self.body_pitch = 0.0
+        self.body_yaw = 0.0
+
+        # Velocity command state
+        self.cmd_vel = [0.0, 0.0, 0.0]  # vx, vy, vyaw
+        self.last_vel_cmd_time = None
+        self.vel_timeout = 0.5  # Deadman switch timeout
+
+        # Safety limits for teleop
+        self.max_height_offset = 0.15  # meters
+        self.max_pitch_roll = 0.4  # radians (~23 degrees)
+        self.max_linear_vel = 1.0  # m/s
+        self.max_angular_vel = 1.5  # rad/s
+
+        # Battery warning tracking
+        self.last_battery_warning_time = None
+        self.battery_warning_interval = 30.0  # Warn every 30 seconds
+        # ================================================
+
+        # ROS 2
+        self.tf_broadcaster = tf2_ros.TransformBroadcaster(self)
+        self.goal = [0., 0., 0.] # x,y,yaw
+        self.create_subscription(PoseStamped, "/spot/waypoint", self.goal_pose_sub_callback, 10)
+        self.create_subscription(PoseStamped, "/goal_pose", self.goal_pose_click_callback, 10)
+        self.pose_pub = self.create_publisher(PoseStamped, '/spot/pose', 10)
+        self.odom_pub = self.create_publisher(Odometry, '/spot/odom', 10)
+        ## qos profile for image publisher [to solve /spot_image fps and freeze issue]
+        qos_profile = QoSProfile(
+            reliability=ReliabilityPolicy.BEST_EFFORT,
+            durability=DurabilityPolicy.VOLATILE,
+            depth=10
+        )
+        self.img_pub = self.create_publisher(Image, '/spot_image', qos_profile)
+
+        # ========== NEW: Teleop Subscribers ==========
+        self.create_subscription(Twist, '/spot/cmd_vel', self.cmd_vel_callback, 10)
+        self.create_subscription(Twist, '/spot/body_pose', self.body_pose_callback, 10)
+        self.create_subscription(Bool, '/spot/teleop_active', self.teleop_active_callback, 10)
+        self.create_subscription(Bool, '/spot/sit', self.sit_callback, 10)
+        self.create_subscription(Bool, '/spot/stand', self.stand_callback, 10)
+
+        # NEW: Teleop Publishers
+        self.battery_pub = self.create_publisher(BatteryState, '/spot/battery', 10)
+        self.teleop_feedback_pub = self.create_publisher(String, '/spot/teleop_feedback', 10)
+        # =============================================
+
+        self.create_timer(0.03, self.odom_pub_timer_callback)
+        self.create_timer(0.05, self.move_status_check_timer_callback)
+
+        # ========== NEW: Teleop Timers ==========
+        self.create_timer(0.1, self.velocity_command_executor)  # 10Hz velocity execution
+        self.create_timer(1.0, self.battery_timer_callback)  # 1Hz battery publishing
+        # ========================================
+
+        # self.yolo = yolo_seg()
+        if self.detection_model == "yolov8":
+            self.yolo = yolo_seg(self)
+        elif self.detection_model == "yolov7-sam2":
+            # Ignored per user request; do not initialize SAM2 in ROS 2 migration
+            self.get_logger().info('SAM2 is ignored in this build; using YOLOv8 only')
+
+        self.bridge = CvBridge()
+        spot.set_screen('pano_full')
+        self.startMonitor(spot.hostname, spot.robot)
+
+        self.create_timer(0.1, self.raw_img_callback)
+
+    def set_mobility_params(self, max_x_vel, max_y_vel, max_yaw_vel, min_x_vel, min_y_vel, min_yaw_vel):
+        speed_limit = SE2VelocityLimit(max_vel=SE2Velocity(linear=Vec2(x=max_x_vel, y=max_y_vel), angular=max_yaw_vel), min_vel=SE2Velocity(linear=Vec2(x=min_x_vel, y=min_y_vel), angular=min_yaw_vel))
+        mobility_params = spot_command_pb2.MobilityParams(vel_limit=speed_limit)
+        return mobility_params
+
+    def startMonitor(self, hostname, robot, process=spot_webrtc.captureT):
+        global webrtc_thread
+        global shutdown_flag
+        spot_webrtc.frameCount = 0
+        spot_webrtc.frameR = None
+        # spot.set_screen('mech_full')  # PTZ camera
+        # spot.set_screen('digi_full')
+        spot.set_screen('pano_full') # for searching window
+        # spot.set_screen('c0')
+        #   spot.stand()
+        # Suppress all exceptions and log them instead.
+        # sys.stderr = InterceptStdErr()
+
+        spot_webrtc.frameCount = 0
+        spot_webrtc.frameR = None
+        # set up webrtc thread (capture only)
+        if webrtc_thread is None:
+            shutdown_flag = threading.Event()
+            webrtc_thread = threading.Thread(
+            target=spot_webrtc.start_webrtc, args=[shutdown_flag, hostname, robot.user_token, process],
+            daemon=True)
+
+        # start webrtc thread
+        webrtc_thread.start()
+        print("[INFO] WebRTC thread started.")
+        while rclpy.ok():
+            c = cv2.waitKey(1)
+            if c == 27:
+                break
+            if not webrtc_thread.is_alive():
+                break
+            elif spot_webrtc.frameCount == 0:
+                tm1 = time.time()
+                # print("-------------------------- frame count = 0 ----------------------")
+                if spot_webrtc.frameR is None:
+                    # print("-------------------- NO FRAME RECEIVED FROM QUEUE --------------------")
+                    pass
+            else:
+                print("-----------------------IMAGE QUEUE READY-----------------------")
+                self.img_received = True
+                break
+
+    def raw_img_callback(self):
+        # publish ros image
+        # print("publish ros img")
+        if self.img_received:
+            self.rgb = spot_webrtc.rgbImage.copy()
+            self.img = spot_webrtc.cvImage.copy()
+
+            # DEBUG: Check frame quality directly from WebRTC
+            if self.rgb is not None and self.img is not None:
+                # Check dtype and shape
+                # print(f"RGB dtype: {self.rgb.dtype}, shape: {self.rgb.shape}")
+                # print(f"IMG dtype: {self.img.dtype}, shape: {self.img.shape}")
+
+                # Display raw frames from WebRTC (before ROS publishing)
+                cv2.imshow('WebRTC RGB Frame', cv2.cvtColor(self.rgb, cv2.COLOR_RGB2BGR))
+                cv2.imshow('WebRTC CV Frame', self.img)
+                cv2.waitKey(1)
+
+            self.publish_image_to_ros(self.img)
+            self.img_yolo = spot_webrtc.rgbImage.copy()
+            # convert img_yolo to torch and move to cuda
+            self.img_yolo = cv2.cvtColor(self.img_yolo, cv2.COLOR_RGB2BGR)
+            self.img_yolo = torch.from_numpy(self.img_yolo).unsqueeze(0).float().to('cuda')
+
+    def odom_pub_timer_callback(self):
+        # print("odom pub timer callback")
+        start_time = self.get_clock().now()
+        pose_msg = PoseStamped()
+        pose_msg.header.stamp = self.get_clock().now().to_msg()
+        pose_msg.header.frame_id = "map"
+
+        odom_msg = Odometry()
+        odom_msg.header.stamp = self.get_clock().now().to_msg()
+        odom_msg.header.frame_id = "map"
+        odom_msg.child_frame_id = "spot_base"
+
+        position, quaternion = self.get_location()
+        # Set position
+        pose_msg.pose.position.x = position.x
+        pose_msg.pose.position.y = position.y
+        pose_msg.pose.position.z = position.z
+
+        # Set orientation
+        pose_msg.pose.orientation.x = quaternion.x
+        pose_msg.pose.orientation.y = quaternion.y
+        pose_msg.pose.orientation.z = quaternion.z
+        pose_msg.pose.orientation.w = quaternion.w
+
+        # Set odom pos
+        odom_msg.pose.pose.position.x = position.x
+        odom_msg.pose.pose.position.y = position.y
+        odom_msg.pose.pose.position.z = position.z
+
+        # Set odom orientation
+        odom_msg.pose.pose.orientation.x = quaternion.x
+        odom_msg.pose.pose.orientation.y = quaternion.y
+        odom_msg.pose.pose.orientation.z = quaternion.z
+        odom_msg.pose.pose.orientation.w = quaternion.w
+
+        # self.get_logger().info(str(pose_msg))
+        self.pose_pub.publish(pose_msg)
+
+        # self.get_logger().info(str(odom_msg))
+        self.odom_pub.publish(odom_msg)
+        # print(f"odom pub time: {self.get_clock().now().to_msg()}")
+        self.position = [position.x, position.y, position.z]
+        
+        # broadcast transform from map to spot_base
+        tf = TransformStamped()
+        tf.header.stamp = self.get_clock().now().to_msg()
+        tf.header.frame_id = "map"
+        tf.child_frame_id = "spot_base"
+        tf.transform.translation.x = position.x
+        tf.transform.translation.y = position.y
+        tf.transform.translation.z = position.z
+        tf.transform.rotation.x = quaternion.x
+        tf.transform.rotation.y = quaternion.y
+        tf.transform.rotation.z = quaternion.z
+        tf.transform.rotation.w = quaternion.w
+        self.tf_broadcaster.sendTransform(tf)
+
+    def goal_pose_sub_callback(self, msg):
+        # Block goal pose commands when in TELEOP mode
+        if self.control_mode == "TELEOP":
+            self.get_logger().warn("In TELEOP mode, ignoring goal_pose command from /spot/waypoint")
+            return
+
+        self.goal_mode = "subscribe"
+        global robot_command_client
+        global robot_state_client
+        frame_name = VISION_FRAME_NAME
+
+        # print("in goal pose sub callback")
+        if self.goal[0] == msg.pose.position.x and self.goal[1] == msg.pose.position.y:
+            self.get_logger().info("subscribed goal has not changed, do not update command")
+            return
+        #  Check distance between current position and goal
+        self.goal = [msg.pose.position.x, msg.pose.position.y, 0]
+        [dx, dy, dyaw] = self.goal
+        current_heading, current_x, current_y, self.heading = self.get_desired_heading(dx, dy)
+        
+        if math.sqrt((current_x - self.goal[0])**2 + (current_y - self.goal[1])**2) < self.reach_tolerance:
+            self.get_logger().info("goal is too close to current position, skip move command")
+            return
+        
+        self.get_logger().info(f"waypoint: x: {self.goal[0]}, y: {self.goal[1]}")
+
+        dyaw = self.heading
+        if abs(current_heading - self.heading) < 0.2:
+            self.send_move_command()
+        else:
+            # rotation required when a new goal is received
+            self.rotate_flag = True
+            rotate_cmd = RobotCommandBuilder.synchro_se2_trajectory_point_command(
+                goal_x=current_x, goal_y=current_y, goal_heading=dyaw,
+                frame_name=frame_name, params=self.mobility_params)
+
+            # calculate rotate end time and send rotate cmd
+            rotate_end_time = 1.5*(abs(current_heading - self.heading)/self.v_ang)
+            rotate_end_time = min(10.0, rotate_end_time)
+            # print("rotate end time: ", rotate_end_time)
+            self.rotate_cmd_id = spot.robot_command_client.robot_command(lease=None, command=rotate_cmd,
+                                                        end_time_secs=time.time() + rotate_end_time)
+            print(f"rotation command request sent: {dyaw}")
+
+    def goal_pose_click_callback(self, msg):
+        # Block goal pose commands when in TELEOP mode
+        if self.control_mode == "TELEOP":
+            self.get_logger().warn("In TELEOP mode, ignoring goal_pose command from /goal_pose")
+            return
+
+        print("in goal pose click callback")
+        self.goal_mode = "click"
+        global robot_command_client
+        global robot_state_client
+        frame_name = VISION_FRAME_NAME
+
+        # print("in goal pose sub callback")
+        if self.goal[0] == msg.pose.position.x and self.goal[1] == msg.pose.position.y:
+            self.get_logger().info("subscribed goal has not changed, do not update command")
+            return
+        #  Check distance between current position and goal
+        self.goal = [msg.pose.position.x, msg.pose.position.y, 0]
+        [dx, dy, dyaw] = self.goal
+        current_heading, current_x, current_y, self.heading = self.get_desired_heading(dx, dy)
+        
+        if math.sqrt((current_x - self.goal[0])**2 + (current_y - self.goal[1])**2) < self.reach_tolerance:
+            self.get_logger().info("goal is too close to current position, skip move command")
+            return
+        
+        self.get_logger().info(f"waypoint: x: {self.goal[0]}, y: {self.goal[1]}")
+
+        # send rotation command
+        dyaw = self.heading
+        if abs(current_heading - self.heading) < 0.2:
+            self.send_move_command()
+        else:
+            self.rotate_flag = True
+            rotate_cmd = RobotCommandBuilder.synchro_se2_trajectory_point_command(
+                goal_x=current_x, goal_y=current_y, goal_heading=dyaw,
+                frame_name=frame_name, params=self.mobility_params)
+
+            # calculate rotate end time and send rotate cmd
+            rotate_end_time = 1.5*(abs(current_heading - self.heading)/self.v_ang)
+            rotate_end_time = min(10.0, rotate_end_time)
+            self.rotate_cmd_id = spot.robot_command_client.robot_command(lease=None, command=rotate_cmd,
+                                                        end_time_secs=time.time() + rotate_end_time)
+            print("rotate end time: ", rotate_end_time)
+            print(f"rotation command request sent: {dyaw}")
+
+    def send_move_command(self):
+        global robot_command_client 
+        global robot_state_client
+        frame_name = VISION_FRAME_NAME
+        [dx, dy, dyaw] = self.goal
+        dyaw = self.heading
+
+        # send move command after rotated to desired heading
+        if self.rotate_flag == False:
+            robot_cmd = RobotCommandBuilder.synchro_se2_trajectory_point_command(
+                goal_x=dx, goal_y=dy, goal_heading=dyaw,
+                frame_name=frame_name, params=self.mobility_params)
+            # calculate move end time and send move cmd
+            end_time = 2.0 * (math.sqrt((dx - self.position[0])**2 + (dy - self.position[1])**2)/self.v_lin)
+            end_time = min(20.0, end_time)
+            end_time = max(4.0, end_time)
+            print(f"move end time: {end_time}")
+            self.cmd_id = spot.robot_command_client.robot_command(lease=None, command=robot_cmd,
+                                                        end_time_secs=time.time() + end_time)
+            print(f"movement command request sent: {self.goal}") 
+
+    def move_status_check_timer_callback(self):
+        if not self.rotate_cmd_id and not self.cmd_id:
+            # self.get_logger().info("no rotation and movement commands, skip move status check")
+            return
+        # elif self.rotate_cmd_id:
+                # print(f"check rotation command id {self.rotate_cmd_id}")
+        # elif self.cmd_id:
+                # print(f"check move command id {self.cmd_id}")
+
+        # check rotation status
+        if self.rotate_cmd_id:
+            # print(f"current desired heading: {self.heading}")
+            current_heading = self.get_desired_heading(self.goal[0], self.goal[1])[0]
+            # print(f"current heading: {current_heading}")
+
+            rot_feedback = spot.robot_command_client.robot_command_feedback(self.rotate_cmd_id)
+            rot_mobility_feedback = rot_feedback.feedback.synchronized_feedback.mobility_command_feedback
+            rot_traj_feedback = rot_mobility_feedback.se2_trajectory_feedback
+
+            if rot_mobility_feedback.status != RobotCommandFeedbackStatus.STATUS_PROCESSING:
+                # print(f"current rotation command id {self.rotate_cmd_id}, status: {rot_mobility_feedback.status}")
+                # if rotation command time out, print failed message and send move command
+                if rot_mobility_feedback.status == 3:
+                    # calculate the difference between current heading and desired heading
+                    diff = abs(current_heading - self.heading)
+                    if diff > 0.1:
+                        # if rotation command time out and not reaching the goal, print failed message
+                        print(f"rotate cmd {self.rotate_cmd_id} failed due to time out. Send move cmd.")
+                    else:
+                        self.get_logger().warn("Facing the desired heading within tolerance now. Send move cmd.")
+                    # clear rotation command id
+                    self.rotate_flag = False
+                    self.rotate_cmd_id = None
+                    # send move command
+                    self.send_move_command()
+            
+            # send move command after rotation is done
+            if (rot_traj_feedback.status == rot_traj_feedback.STATUS_AT_GOAL and
+                    rot_traj_feedback.body_movement_status == rot_traj_feedback.BODY_STATUS_SETTLED):
+                self.get_logger().warn("Facing the desired heading now.")
+
+                # clear rotation command id
+                self.rotate_flag = False
+                self.rotate_cmd_id = None
+                # send move command
+                self.send_move_command()
+
+        # check movement status
+        if not self.cmd_id:
+            # self.get_logger().info("no command id, skip move status check")
+            return
+        if self.cmd_id:
+            feedback = spot.robot_command_client.robot_command_feedback(self.cmd_id)
+            mobility_feedback = feedback.feedback.synchronized_feedback.mobility_command_feedback
+            traj_feedback = mobility_feedback.se2_trajectory_feedback
+            if mobility_feedback.status != RobotCommandFeedbackStatus.STATUS_PROCESSING:
+                # print(f"current move command id {self.cmd_id}, status: {mobility_feedback.status}")
+
+                if mobility_feedback.status == 3:
+                    # set reached goal tolerance to 0.15m
+                    diff = math.sqrt((self.position[0] - self.goal[0])**2 + (self.position[1] - self.goal[1])**2)
+                    if diff > self.reach_tolerance:
+                        # if move command time out and not reaching the goal, print failed message
+                        print(f"move cmd {self.cmd_id} failed due to time out. distance to goal is {diff}")
+                    else:
+                        self.get_logger().warn("Reached goal within tolerance now.")
+                    # clear move command id otherwise it's keep printing msg
+                    self.cmd_id = None
+            
+            if (traj_feedback.status == traj_feedback.STATUS_AT_GOAL and
+                    traj_feedback.body_movement_status == traj_feedback.BODY_STATUS_SETTLED):
+                self.get_logger().warn("Arrived at the goal.")
+                self.cmd_id = None
+                # in click mode, if goal is origin, sit
+                if self.goal_mode == "click":
+                    if (math.sqrt(self.goal[0]**2 + self.goal[1]**2) < 0.3):
+                        spot.sit()
+                        self.get_logger().warn("click mode goal is origin, sit")
+
+    def get_desired_heading(self, dx, dy):
+        position, quaternion = self.get_location()
+        current_x = position.x
+        current_y = position.y
+        current_rot = R.from_quat([quaternion.x, quaternion.y, quaternion.z, quaternion.w])
+        current_yaw = current_rot.as_euler('xyz', degrees=False)[2]
+
+        x = dx - current_x
+        y = dy - current_y
+        goal_yaw = math.atan2(y, x)
+        # print(f"current yaw: {current_yaw}, goal yaw: {goal_yaw}")
+
+        diff = abs(goal_yaw - current_yaw)
+        if diff > math.pi:
+            diff = 2*math.pi - diff
+        # print(f"diff: {diff}")
+        if math.pi/8 < diff < 3*math.pi/4:
+            dyaw = goal_yaw
+        else:
+            dyaw = current_yaw
+        # print(f"desired heading: {dyaw}")
+        return current_yaw, current_x, current_y, dyaw
+
+    def get_location(self):
+        global robot_state_client
+
+        curr_transforms = spot.robot_state_client.get_robot_state().kinematic_state.transforms_snapshot
+        vision_tform_body = get_vision_tform_body(curr_transforms)
+
+        position = vision_tform_body.position
+        rot_quaternion = vision_tform_body.rotation
+        return position, rot_quaternion
+
+    def action(self):
+        spot.stand()
+        time.sleep(1.0)
+        spot.sit()
+
+    def endSpot(self):
+        global p
+        global webrtc_thread
+        if webrtc_thread is not None:
+            # stop webrtc capture thread        
+            shutdown_flag.set()
+            try:
+                webrtc_thread.join()
+            #print('Successfully saved webrtc images to local directory.')
+            except KeyboardInterrupt:
+                shutdown_flag.set()
+                webrtc_thread.join(timeout=3.0)
+
+        time.sleep(1.0)      
+        spot.sit()
+        self.get_logger().info("end spot")
+
+
+    def move(self):
+        try:
+            return self.global_move()
+        except Exception as exc:  # pylint: disable=broad-except
+            logger = bosdyn.client.util.get_logger()
+            logger.error("Spot move exception: %r", exc)
+            return False
+
+    def publish_image_to_ros(self,cv_img):
+        try:
+            ros_img = self.bridge.cv2_to_imgmsg(cv_img, encoding="bgr8")
+            ros_img.header.stamp = self.get_clock().now().to_msg()
+            self.img_pub.publish(ros_img)
+        except CvBridgeError as e:
+            print(e)
+
+    def publish_yolo_img_to_ros(self,cv_img):
+        try:
+            ros_img = self.bridge.cv2_to_imgmsg(cv_img, encoding="bgr8")
+            self.yolo_img_pub.publish(ros_img)
+        except CvBridgeError as e:
+            print(e)
+
+    def publish_bbox(self, box, cat, conf):
+        bbox_msg = Detection2DArray()
+        bbox_msg.detections = []
+
+        for i in range(len(box)):
+            bbox = Detection2D()
+
+            bbox.bbox.center.position.x = (int(box[i][0]) + int(box[i][2])) / 2
+            bbox.bbox.center.position.y = (int(box[i][1]) + int(box[i][3])) / 2
+            bbox.bbox.size_x = abs(int(box[i][2]) - int(box[i][0]))
+            bbox.bbox.size_y = abs(int(box[i][3]) - int(box[i][1]))
+
+            hypothesis = ObjectHypothesisWithPose()
+            hypothesis.hypothesis.class_id = str(int(cat[i]))
+            hypothesis.hypothesis.score = float(conf[i])
+            bbox.results.append(hypothesis)
+            
+            bbox_msg.detections.append(bbox)
+            bbox_msg.header.stamp = self.get_clock().now().to_msg()
+            bbox_msg.header.frame_id = 'yolo_bbox'
+
+        self.bbox_pub.publish(bbox_msg)
+    '''
+    def publish_sem_label(self, model, cat):
+        labels_msg = SemanticLabel()
+        labels_msg.ids = []
+        labels_msg.labels = []
+
+        for i in range(len(cat)):
+            cat_id = int(cat[i])
+            label = model.names[int(cat[i])]
+
+            labels_msg.ids.append(cat_id)
+            labels_msg.labels.append(label)
+
+        self.label_pub.publish(labels_msg)
+    '''
+    def goal_reached_callback(self, status):
+        pass
+
+    def path_callback(self, path_msg):
+        self.move()
+
+    # ==================== NEW: TELEOP CALLBACK METHODS ====================
+
+    def teleop_active_callback(self, msg):
+        """Handle teleop heartbeat - switches to TELEOP mode"""
+        if msg.data and self.control_mode != "TELEOP":
+            self.get_logger().info("Switching to TELEOP mode")
+            # Cancel any ongoing navigation commands
+            if self.cmd_id:
+                self.get_logger().info("  Cancelling ongoing navigation command")
+                self.cmd_id = None
+            if self.rotate_cmd_id:
+                self.get_logger().info("  Cancelling ongoing rotation command")
+                self.rotate_cmd_id = None
+                self.rotate_flag = False
+
+        if msg.data:
+            self.control_mode = "TELEOP"
+            self.last_teleop_time = self.get_clock().now()
+
+    def cmd_vel_callback(self, msg):
+        """Handle velocity commands from keyboard teleop"""
+        if self.control_mode != "TELEOP":
+            return
+
+        # Clamp velocities to safety limits
+        vx = max(-self.max_linear_vel, min(self.max_linear_vel, msg.linear.x))
+        vy = max(-self.max_linear_vel, min(self.max_linear_vel, msg.linear.y))
+        vyaw = max(-self.max_angular_vel, min(self.max_angular_vel, msg.angular.z))
+
+        self.cmd_vel = [vx, vy, vyaw]
+        self.last_vel_cmd_time = self.get_clock().now()
+
+    def body_pose_callback(self, msg):
+        """Handle body pose commands (height, pitch, roll)"""
+        # Clamp to safety limits
+        self.body_height = max(-self.max_height_offset,
+                               min(self.max_height_offset, msg.linear.z))
+        self.body_pitch = max(-self.max_pitch_roll,
+                              min(self.max_pitch_roll, msg.angular.y))
+        self.body_roll = max(-self.max_pitch_roll,
+                             min(self.max_pitch_roll, msg.angular.x))
+        self.body_yaw = msg.angular.z
+
+        self.get_logger().info(f"Body pose updated: height={self.body_height*100:.1f}cm, "
+                              f"roll={math.degrees(self.body_roll):.1f}deg, "
+                              f"pitch={math.degrees(self.body_pitch):.1f}deg")
+
+        # Execute stance command
+        self.execute_body_pose()
+
+    def sit_callback(self, msg):
+        """Handle sit command"""
+        if msg.data:
+            spot.sit()
+            self.get_logger().info("Executing sit command")
+
+    def stand_callback(self, msg):
+        """Handle stand command"""
+        if msg.data:
+            spot.stand()
+            self.get_logger().info("Executing stand command")
+
+    def battery_timer_callback(self):
+        """Publish battery status at 1Hz"""
+        try:
+            battery_pct = spot.battery_status()
+
+            battery_msg = BatteryState()
+            battery_msg.header.stamp = self.get_clock().now().to_msg()
+            battery_msg.percentage = battery_pct / 100.0
+            battery_msg.voltage = float('nan')
+            battery_msg.current = float('nan')
+            battery_msg.charge = float('nan')
+            battery_msg.capacity = float('nan')
+            battery_msg.design_capacity = float('nan')
+            battery_msg.power_supply_status = BatteryState.POWER_SUPPLY_STATUS_DISCHARGING
+
+            self.battery_pub.publish(battery_msg)
+
+            # Warn if battery low (only every 30 seconds)
+            if battery_pct < 20:
+                current_time = self.get_clock().now()
+                should_warn = False
+
+                if self.last_battery_warning_time is None:
+                    should_warn = True
+                else:
+                    time_since_warning = (current_time - self.last_battery_warning_time).nanoseconds / 1e9
+                    if time_since_warning >= self.battery_warning_interval:
+                        should_warn = True
+
+                if should_warn:
+                    warning = f"WARNING: Low battery: {battery_pct:.1f}%"
+                    self.teleop_feedback_pub.publish(String(data=warning))
+                    self.get_logger().warn(warning)
+                    self.last_battery_warning_time = current_time
+        except Exception as e:
+            self.get_logger().error(f"Error getting battery status: {e}")
+
+    def velocity_command_executor(self):
+        """Execute velocity commands continuously at 10Hz"""
+
+        # Check if we should switch back to autonomous mode
+        if self.control_mode == "TELEOP" and self.last_teleop_time:
+            time_since_teleop = (self.get_clock().now() - self.last_teleop_time).nanoseconds / 1e9
+            if time_since_teleop > self.teleop_timeout:
+                self.get_logger().info("Switching back to AUTONOMOUS mode (teleop timeout)")
+                self.control_mode = "AUTONOMOUS"
+                self.cmd_vel = [0.0, 0.0, 0.0]
+                return
+
+        # Only execute if in TELEOP mode
+        if self.control_mode != "TELEOP":
+            return
+
+        # Deadman switch: stop if no command received recently
+        if self.last_vel_cmd_time:
+            time_since_cmd = (self.get_clock().now() - self.last_vel_cmd_time).nanoseconds / 1e9
+            if time_since_cmd > self.vel_timeout:
+                self.cmd_vel = [0.0, 0.0, 0.0]
+
+        # Execute velocity command
+        vx, vy, vyaw = self.cmd_vel
+
+        # Only send command if there's motion
+        if abs(vx) > 0.01 or abs(vy) > 0.01 or abs(vyaw) > 0.01:
+            try:
+                cmd = RobotCommandBuilder.synchro_velocity_command(
+                    v_x=vx,
+                    v_y=vy,
+                    v_rot=vyaw,
+                    params=self.mobility_params,
+                    body_height=self.body_height,
+                    frame_name='body'
+                )
+
+                # Send with 0.5s end time (will be refreshed at 10Hz)
+                spot.robot_command_client.robot_command(
+                    lease=None,
+                    command=cmd,
+                    end_time_secs=time.time() + 0.5
+                )
+            except Exception as e:
+                self.get_logger().error(f"Error executing velocity command: {e}")
+                self.teleop_feedback_pub.publish(String(data=f"WARNING: Velocity command error: {e}"))
+
+    def execute_body_pose(self):
+        """Execute stance command with body pose"""
+        try:
+            # Create orientation with pitch and roll
+            footprint_R_body = bosdyn.geometry.EulerZXY(
+                yaw=self.body_yaw,
+                roll=self.body_roll,
+                pitch=self.body_pitch
+            )
+
+            # Create position offset (height)
+            # position = geometry_pb2.Vec3(x=0.0, y=0.0, z=self.body_height)
+            # rotation = footprint_R_body.to_quaternion()
+            # pose = geometry_pb2.SE3Pose(position=position, rotation=rotation)
+            # point = trajectory_pb2.SE3TrajectoryPoint(pose=pose)
+            # traj = trajectory_pb2.SE3Trajectory(points=[point])
+
+            # # Create body control params
+            # body_control = spot_command_pb2.BodyControlParams(
+            #     base_offset_rt_footprint=traj
+            # )
+
+            # Get current foot positions (using default stance)
+            from bosdyn.api.geometry_pb2 import Vec2
+
+            # Default stance positions (approximate)
+            pos_fl = Vec2(x=0.45, y=0.35)   # Front left
+            pos_fr = Vec2(x=0.45, y=-0.35)  # Front right
+            pos_hl = Vec2(x=-0.45, y=0.35)  # Hind left
+            pos_hr = Vec2(x=-0.45, y=-0.35) # Hind right
+
+            cmd = RobotCommandBuilder.stance_command(
+                se2_frame_name=VISION_FRAME_NAME,
+                pos_fl_rt_frame=pos_fl,
+                pos_fr_rt_frame=pos_fr,
+                pos_hl_rt_frame=pos_hl,
+                pos_hr_rt_frame=pos_hr,
+                body_height=self.body_height,
+                footprint_R_body=footprint_R_body
+            )
+
+            spot.robot_command_client.robot_command(
+                lease=None,
+                command=cmd,
+                end_time_secs=time.time() + 2.0
+            )
+
+            self.get_logger().info("Body pose command executed")
+
+        except Exception as e:
+            self.get_logger().error(f"Error executing body pose: {e}")
+            self.teleop_feedback_pub.publish(String(data=f"WARNING: Body pose error: {e}"))
+
+    # ======================================================================
+
+def main(args=None):
+    while True:
+        if spot.connect():
+            break
+        else:
+            print("connection fails")
+
+    print("begin")
+    rclpy.init(args=args)
+    spot_move_base = spotMoveBase()
+    try:
+        rclpy.spin(spot_move_base)
+    except KeyboardInterrupt:
+        pass
+    finally:
+        spot_move_base.endSpot()
+        spot_move_base.destroy_node()
+        rclpy.shutdown()
+
+if __name__ == '__main__':
+    main()

@@ -1,0 +1,66 @@
+======================================================================
+LAST IMAGE RESPONSE METADATA:
+======================================================================
+
+shot:
+  cols: 2880
+  rows: 324
+  data: <142157 bytes>
+  format: 1
+  pixel_format: 3
+  frame_name_image_sensor: pano
+  acquisition_time: seconds: 1774018557
+nanos: 761993984
+
+  transforms_snapshot: child_to_parent_edge_map {
+  key: "spot_cam_payload_frame"
+  value {
+    parent_frame_name: "body"
+    parent_tform_child {
+      position {
+        x: 0.31245
+        z: 0.18331999999999998
+      }
+      rotation {
+        x: -0.63003674874885629
+        y: -0.3210197738862367
+        z: 0.3210197738862367
+        w: 0.63003674874885629
+      }
+    }
+  }
+}
+child_to_parent_edge_map {
+  key: "pano"
+  value {
+    parent_frame_name: "spot_cam_payload_frame"
+    parent_tform_child {
+      position {
+      }
+      rotation {
+        z: -1
+      }
+    }
+  }
+}
+child_to_parent_edge_map {
+  key: "body"
+  value {
+    parent_tform_child {
+    }
+  }
+}
+
+
+source:
+  name: pano
+  cols: 9600
+  rows: 1080
+  pinhole: 
+  image_type: 1
+  pixel_formats: [3]
+  image_formats: [1, 2]
+
+status:
+  1
+
