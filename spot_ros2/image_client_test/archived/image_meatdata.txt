@@ -1,16 +1,17 @@
 ======================================================================
 LAST IMAGE RESPONSE METADATA:
 ======================================================================
+[]
 
 shot:
-  cols: 2880
-  rows: 324
-  data: <142157 bytes>
-  format: 1
+  cols: 1920
+  rows: 1080
+  data: <6220800 bytes>
+  format: 2
   pixel_format: 3
-  frame_name_image_sensor: pano
-  acquisition_time: seconds: 1774018557
-nanos: 761993984
+  frame_name_image_sensor: c3
+  acquisition_time: seconds: 1774395734
+nanos: 49321472
 
   transforms_snapshot: child_to_parent_edge_map {
   key: "spot_cam_payload_frame"
@@ -31,14 +32,20 @@ nanos: 761993984
   }
 }
 child_to_parent_edge_map {
-  key: "pano"
+  key: "c3"
   value {
     parent_frame_name: "spot_cam_payload_frame"
     parent_tform_child {
       position {
+        x: -0.033234043247197545
+        y: -0.00094931509482635429
+        z: -0.046548196506384129
       }
       rotation {
-        z: -1
+        x: -0.67194477915208972
+        y: -0.67252495173272531
+        z: 0.22006028606382666
+        w: 0.21857235315714577
       }
     }
   }
@@ -53,14 +60,23 @@ child_to_parent_edge_map {
 
 
 source:
-  name: pano
-  cols: 9600
+  name: c3
+  cols: 1920
   rows: 1080
-  pinhole: 
+  pinhole: intrinsics {
+  focal_length {
+    x: 731.10210870941251
+    y: 730.9124915326945
+  }
+  principal_point {
+    x: 915.568088957381
+    y: 569.93912975939679
+  }
+}
+
   image_type: 1
   pixel_formats: [3]
   image_formats: [1, 2]
 
 status:
   1
-

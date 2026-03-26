@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-Spot CAM+ Panoramic Image ROS2 Publisher
-Captures 'pano' image, splits into 5 fisheye cameras, calibrates, stitches, and publishes
+Spot CAM+ Single Camera ROS2 Publisher
+Publishes image and camera info for a single camera source
 """
 
 from bosdyn.client.image import build_image_request, ImageClient
@@ -10,50 +10,119 @@ import bosdyn.client.util
 from spot_ros2.CameraService import CameraService
 import cv2
 import numpy as np
-import time
+import json
+import os
 
 import rclpy
 from rclpy.node import Node
 from sensor_msgs.msg import Image, CameraInfo
 from std_msgs.msg import Header
-from geometry_msgs.msg import TransformStamped
 from cv_bridge import CvBridge
+import time
 
-class SpotPanoPublisher(Node):
-    def __init__(self, resize_ratio=0.30, quality_percent=100, image_format=2, pixel_format=3):
-        super().__init__('spot_pano_publisher')
 
-        # Image capture parameters (adjustable)
+class SpotCameraPublisher(Node):
+    def __init__(self, source='c2', resize_ratio=0.30, quality_percent=100, image_format=2):
+        super().__init__('spot_camera_publisher')
+
+        # =================================================================
+        # CONFIGURATION
+        # =================================================================
+
+        self.source = source  # Camera source: 'c0', 'c1', 'c2', 'c3', 'c4', 'pano', etc.
         self.resize_ratio = resize_ratio
         self.quality_percent = quality_percent
-        self.image_format = image_format
-        self.pixel_format = pixel_format
+        self.image_format = image_format  # 1=JPEG, 2=RAW
 
-        # Original resolution: 1920x1080 per camera, 9600x1080 for pano
-        self.original_camera_width = 1920
-        self.original_camera_height = 1080
+        self.get_logger().info(f"Starting Spot Camera Publisher:")
+        self.get_logger().info(f"  Source: {source}")
+        self.get_logger().info(f"  Resize ratio: {resize_ratio}")
+        self.get_logger().info(f"  Quality: {quality_percent}%")
+        self.get_logger().info(f"  Format: {'JPEG' if image_format == 1 else 'RAW'}")
 
-        # Resized resolution (with resize_ratio applied)
-        self.camera_width = int(self.original_camera_width * resize_ratio)  # 576
-        self.camera_height = int(self.original_camera_height * resize_ratio)  # 324
-        self.pano_width = self.camera_width * 5  # 2880
-        self.pano_height = self.camera_height  # 324
+        # =================================================================
+        # LOAD CAMERA CALIBRATION
+        # =================================================================
 
-        self.get_logger().info(f"Resolution: {self.camera_width}x{self.camera_height} per camera, "
-                               f"{self.pano_width}x{self.pano_height} pano")
+        # Try to load calibration from JSON file
+        calib_file = f'{source}_fisheye_calibration.json'
+        if os.path.exists(calib_file):
+            self.get_logger().info(f"Loading calibration from {calib_file}")
+            with open(calib_file, 'r') as f:
+                calib = json.load(f)
 
-        # ROS2 publishers
-        self.pano_pub = self.create_publisher(Image, '/spot_image_pano', 10)
-        self.pano_params_pub = self.create_publisher(TransformStamped, '/pano_parameters', 10)
-        self.camera_params_pub = self.create_publisher(CameraInfo, '/camera_parameters', 10)
+            # Extract intrinsics (at original resolution)
+            self.fx_orig = calib['fx']
+            self.fy_orig = calib['fy']
+            self.cx_orig = calib['cx']
+            self.cy_orig = calib['cy']
 
-        # CV Bridge for image conversion
+            # Extract distortion coefficients
+            self.k1 = calib['k1']
+            self.k2 = calib['k2']
+            self.k3 = calib['k3']
+            self.k4 = calib['k4']
+
+            self.get_logger().info(f"  Loaded calibration: fx={self.fx_orig:.2f}, k1={self.k1:.6f}")
+
+        else:
+            # Use default intrinsics (from camera_paramters.txt)
+            self.get_logger().warn(f"Calibration file {calib_file} not found, using defaults")
+
+            defaults = {
+                # 'c0': {'fx': 731.103, 'fy': 730.925, 'cx': 966.709, 'cy': 573.586},
+                # 'c1': {'fx': 732.681, 'fy': 732.484, 'cx': 991.069, 'cy': 555.718},
+                # 'c2': {'fx': 731.200, 'fy': 730.983, 'cx': 1004.887, 'cy': 592.168},
+                # 'c3': {'fx': 731.102, 'fy': 730.912, 'cx': 915.568, 'cy': 569.939},
+                # 'c4': {'fx': 732.784, 'fy': 732.587, 'cx': 957.771, 'cy': 552.834},
+            }
+
+            if source in defaults:
+                self.fx_orig = defaults[source]['fx']
+                self.fy_orig = defaults[source]['fy']
+                self.cx_orig = defaults[source]['cx']
+                self.cy_orig = defaults[source]['cy']
+            else:
+                # Generic defaults
+                self.fx_orig = 730.0
+                self.fy_orig = 730.0
+                self.cx_orig = 960.0
+                self.cy_orig = 540.0
+
+            # No distortion coefficients
+            self.k1 = 0.0
+            self.k2 = 0.0
+            self.k3 = 0.0
+            self.k4 = 0.0
+
+        # Scale intrinsics by resize ratio
+        self.fx = self.fx_orig * resize_ratio
+        self.fy = self.fy_orig * resize_ratio
+        self.cx = self.cx_orig * resize_ratio
+        self.cy = self.cy_orig * resize_ratio
+
+        self.get_logger().info(f"  Scaled intrinsics: fx={self.fx:.2f}, fy={self.fy:.2f}")
+
+        # =================================================================
+        # ROS2 PUBLISHERS
+        # =================================================================
+
+        self.image_pub = self.create_publisher(Image, '/image', 10)
+        self.camera_info_pub = self.create_publisher(CameraInfo, '/camera_info', 10)
+
         self.bridge = CvBridge()
 
-        # Initialize Spot connection
+        # Performance monitoring
+        self.last_time = time.time()
+        self.fps_counter = 0
+
+        # =================================================================
+        # CONNECT TO SPOT
+        # =================================================================
+
         self.get_logger().info("Connecting to Spot...")
         bosdyn.client.util.setup_logging(False)
-        sdk = bosdyn.client.create_standard_sdk('SpotPanoPublisher')
+        sdk = bosdyn.client.create_standard_sdk('SpotCameraPublisher')
         spot_cam.register_all_service_clients(sdk)
 
         robot = sdk.create_robot('10.0.0.3')
@@ -64,287 +133,197 @@ class SpotPanoPublisher(Node):
 
         self.get_logger().info("Connected to Spot CAM+")
 
-        # Camera intrinsics for c0-c4 (from camera_paramters.txt, scaled by resize_ratio)
-        # Original intrinsics are at 1920x1080, scale to resized resolution
-        self.camera_intrinsics = {
-            'c0': {
-                'fx': 731.103 * resize_ratio, 'fy': 730.925 * resize_ratio,
-                'cx': 966.709 * resize_ratio, 'cy': 573.586 * resize_ratio,
-                'k1': 0, 'k2': 0, 'p1': 0, 'p2': 0
-            },
-            'c1': {
-                'fx': 732.681 * resize_ratio, 'fy': 732.484 * resize_ratio,
-                'cx': 991.069 * resize_ratio, 'cy': 555.718 * resize_ratio,
-                'k1': 0, 'k2': 0, 'p1': 0, 'p2': 0
-            },
-            'c2': {
-                'fx': 731.200 * resize_ratio, 'fy': 730.983 * resize_ratio,
-                'cx': 1004.887 * resize_ratio, 'cy': 592.168 * resize_ratio,
-                'k1': 0, 'k2': 0, 'p1': 0, 'p2': 0
-            },
-            'c3': {
-                'fx': 731.102 * resize_ratio, 'fy': 730.912 * resize_ratio,
-                'cx': 915.568 * resize_ratio, 'cy': 569.939 * resize_ratio,
-                'k1': 0, 'k2': 0, 'p1': 0, 'p2': 0
-            },
-            'c4': {
-                'fx': 732.784 * resize_ratio, 'fy': 732.587 * resize_ratio,
-                'cx': 957.771 * resize_ratio, 'cy': 552.834 * resize_ratio,
-                'k1': 0, 'k2': 0, 'p1': 0, 'p2': 0
-            },
-        }
+        # =================================================================
+        # BUILD IMAGE REQUEST
+        # =================================================================
 
-        # Camera extrinsics (relative to spot_cam_payload_frame, from camera_paramters.txt)
-        self.camera_extrinsics = {
-            'c0': {
-                'position': {'x': 0.0, 'y': 0.0, 'z': 0.049},
-                'rotation': {'x': 0.0, 'y': 0.0, 'z': 0.707, 'w': 0.707}
-            },
-            'c1': {
-                'position': {'x': 0.0506, 'y': -0.0013, 'z': 0.0117},
-                'rotation': {'x': 0.416, 'y': 0.415, 'z': 0.567, 'w': 0.577}
-            },
-            'c2': {
-                'position': {'x': 0.0300, 'y': -0.0025, 'z': -0.0484},
-                'rotation': {'x': -0.673, 'y': -0.673, 'z': -0.216, 'w': -0.221}
-            },
-            'c3': {
-                'position': {'x': -0.0332, 'y': -0.0009, 'z': -0.0465},
-                'rotation': {'x': -0.672, 'y': -0.673, 'z': 0.220, 'w': 0.219}
-            },
-            'c4': {
-                'position': {'x': -0.0515, 'y': -0.0003, 'z': 0.0131},
-                'rotation': {'x': -0.412, 'y': -0.416, 'z': 0.566, 'w': 0.580}
-            },
-        }
+        self.image_request = [
+            build_image_request(
+                self.source,
+                quality_percent=self.quality_percent,
+                resize_ratio=self.resize_ratio,
+                image_format=self.image_format
+            )
+        ]
 
-        # Publish camera parameters once (constant)
-        self.publish_camera_parameters()
+        # Get first image to determine actual resolution
+        first_response = self.cam_image_client.get_image(self.image_request)
+        first_img = first_response[0].shot.image
 
-        # Create timer for periodic image capture and publishing
-        self.timer = self.create_timer(0.1, self.capture_and_publish)  # 10 Hz
+        self.image_width = first_img.cols
+        self.image_height = first_img.rows
 
-        self.get_logger().info("Spot Pano Publisher initialized")
+        self.get_logger().info(f"Actual image size: {self.image_width}x{self.image_height}")
+
+        # =================================================================
+        # CREATE TIMER FOR PUBLISHING
+        # =================================================================
+
+        # Publish at 10 Hz
+        self.timer = self.create_timer(0.1, self.publish_callback)
+
         self.frame_count = 0
-        self.start_time = time.time()
+        self.get_logger().info("Publisher started!")
 
-    def publish_camera_parameters(self):
-        """Publish camera intrinsics and extrinsics for all 5 cameras (c0-c4)"""
-        for cam_name in ['c0', 'c1', 'c2', 'c3', 'c4']:
-            cam_info = CameraInfo()
-            cam_info.header = Header()
-            cam_info.header.stamp = self.get_clock().now().to_msg()
-            cam_info.header.frame_id = cam_name
+    def publish_callback(self):
+        """Main publishing loop - called at 10 Hz"""
 
-            intrinsics = self.camera_intrinsics[cam_name]
-            cam_info.width = self.camera_width  # 576 with resize_ratio=0.30
-            cam_info.height = self.camera_height  # 324 with resize_ratio=0.30
-            cam_info.distortion_model = "plumb_bob"
+        try:
+            t0 = time.time()
 
-            # K matrix [fx, 0, cx, 0, fy, cy, 0, 0, 1]
-            cam_info.k = [
-                float(intrinsics['fx']), 0.0, float(intrinsics['cx']),
-                0.0, float(intrinsics['fy']), float(intrinsics['cy']),
+            # =========================================================
+            # CAPTURE IMAGE - OPTIMIZED
+            # =========================================================
+
+            image_responses = self.cam_image_client.get_image(self.image_request)
+            response = image_responses[0]
+            img_proto = response.shot.image
+
+            t1 = time.time()
+
+            # =========================================================
+            # PUBLISH IMAGE - OPTIMIZED (Skip cv_bridge overhead)
+            # =========================================================
+
+            header = Header()
+            header.stamp = self.get_clock().now().to_msg()
+            header.frame_id = self.source
+
+            # Build ROS Image message directly without cv_bridge conversion
+            image_msg = Image()
+            image_msg.header = header
+            image_msg.height = img_proto.rows
+            image_msg.width = img_proto.cols
+            image_msg.encoding = 'rgb8'  # RAW format is already RGB
+            image_msg.is_bigendian = 0
+            image_msg.step = img_proto.cols * 3  # bytes per row
+
+            if img_proto.format == 2:  # RAW
+                # Direct copy - no conversion needed!
+                image_msg.data = img_proto.data
+            else:  # JPEG
+                # Decode JPEG to RGB
+                np_img = cv2.imdecode(
+                    np.frombuffer(img_proto.data, dtype=np.uint8),
+                    cv2.IMREAD_COLOR
+                )
+                # Convert BGR to RGB
+                np_img = cv2.cvtColor(np_img, cv2.COLOR_BGR2RGB)
+                image_msg.data = np_img.tobytes()
+
+            t2 = time.time()
+
+            self.image_pub.publish(image_msg)
+
+            t3 = time.time()
+
+            # =========================================================
+            # PUBLISH CAMERA INFO
+            # =========================================================
+
+            camera_info = CameraInfo()
+            camera_info.header = header
+
+            # Image dimensions
+            camera_info.height = self.image_height
+            camera_info.width = self.image_width
+
+            # Distortion model - use 'equidistant' for fisheye cameras
+            camera_info.distortion_model = 'equidistant'
+
+            # Camera matrix K [fx, 0, cx, 0, fy, cy, 0, 0, 1]
+            camera_info.k = [
+                self.fx, 0.0, self.cx,
+                0.0, self.fy, self.cy,
                 0.0, 0.0, 1.0
             ]
 
-            # D distortion coefficients [k1, k2, p1, p2, k3]
-            cam_info.d = [
-                float(intrinsics['k1']), float(intrinsics['k2']),
-                float(intrinsics['p1']), float(intrinsics['p2']), 0.0
+            # Distortion coefficients D [k1, k2, k3, k4] for equidistant model
+            camera_info.d = [
+                float(self.k1),
+                float(self.k2),
+                float(self.k3),
+                float(self.k4)
             ]
 
-            # P projection matrix (for rectified image)
-            cam_info.p = [
-                float(intrinsics['fx']), 0.0, float(intrinsics['cx']), 0.0,
-                0.0, float(intrinsics['fy']), float(intrinsics['cy']), 0.0,
+            # Rectification matrix R (identity for unrectified)
+            camera_info.r = [
+                1.0, 0.0, 0.0,
+                0.0, 1.0, 0.0,
+                0.0, 0.0, 1.0
+            ]
+
+            # Projection matrix P [fx, 0, cx, Tx, 0, fy, cy, Ty, 0, 0, 1, 0]
+            camera_info.p = [
+                self.fx, 0.0, self.cx, 0.0,
+                0.0, self.fy, self.cy, 0.0,
                 0.0, 0.0, 1.0, 0.0
             ]
 
-            # R rectification matrix (identity if no rectification)
-            cam_info.r = [1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0]
+            self.camera_info_pub.publish(camera_info)
 
-            self.camera_params_pub.publish(cam_info)
-            self.get_logger().info(f"Published camera parameters for {cam_name}")
-
-    def capture_and_publish(self):
-        """Capture pano image, process, and publish"""
-        try:
-            # Build request for pano image (using configurable parameters)
-            request = [
-                build_image_request(
-                    'pano',
-                    quality_percent=self.quality_percent,
-                    resize_ratio=self.resize_ratio,
-                    image_format=self.image_format,
-                    pixel_format=self.pixel_format
-                )
-            ]
-
-            # Capture image
-            image_responses = self.cam_image_client.get_image(request)
-            response = image_responses[0]
-            img = response.shot.image
-
-            # Convert to cv2 image
-            if img.format == 2:  # RAW
-                pano_image = cv2.cvtColor(
-                    np.frombuffer(img.data, dtype=np.uint8).reshape((img.rows, img.cols, 3)),
-                    cv2.COLOR_RGB2BGR
-                )
-            else:  # JPEG
-                pano_image = cv2.imdecode(
-                    np.frombuffer(img.data, dtype=np.uint8),
-                    cv2.IMREAD_COLOR
-                )
-
-            # Process: split into 5 fisheyes, rotate, calibrate, stitch
-            stitched_pano = self.process_pano(pano_image)
-
-            # Publish stitched panoramic image
-            ros_image = self.bridge.cv2_to_imgmsg(stitched_pano, encoding="bgr8")
-            ros_image.header.stamp = self.get_clock().now().to_msg()
-            ros_image.header.frame_id = "pano_stitched"
-            self.pano_pub.publish(ros_image)
-
-            # Publish pano parameters (timestamp and extrinsics)
-            self.publish_pano_parameters(response)
+            # =========================================================
+            # LOG STATUS WITH PERFORMANCE METRICS
+            # =========================================================
 
             self.frame_count += 1
+            self.fps_counter += 1
 
-            # Log FPS every 30 frames
-            if self.frame_count % 30 == 0:
-                elapsed = time.time() - self.start_time
-                fps = self.frame_count / elapsed
-                self.get_logger().info(f"Frame {self.frame_count}: {fps:.2f} FPS")
+            # Calculate actual FPS every 30 frames
+            if self.frame_count % 100 == 0:
+                elapsed = time.time() - self.last_time
+                actual_fps = self.fps_counter / elapsed
+
+                # Timing breakdown
+                capture_time = (t1 - t0) * 1000  # ms
+                convert_time = (t2 - t1) * 1000  # ms
+                publish_time = (t3 - t2) * 1000  # ms
+                total_time = (t3 - t0) * 1000    # ms
+
+                self.get_logger().info(
+                    f"Frame {self.frame_count} | "
+                    f"FPS: {actual_fps:.2f} Hz | "
+                    f"Times(ms): capture={capture_time:.1f}, "
+                    f"convert={convert_time:.1f}, publish={publish_time:.1f}, "
+                    f"total={total_time:.1f}"
+                )
+
+                # Reset FPS counter
+                self.last_time = time.time()
+                self.fps_counter = 0
 
         except Exception as e:
-            self.get_logger().error(f"Error in capture_and_publish: {e}")
-
-    def process_pano(self, pano_image):
-        """
-        Split pano into 5 fisheyes, rotate 90° clockwise, calibrate, and stitch
-
-        Original 'pano' is 9600x1080 (W x H), each camera is 1920x1080
-        With resize_ratio=0.30: pano is 2880x324 (W x H), each camera is 576x324 (W x H)
-        In OpenCV format: height=324, width=2880 for pano; height=324, width=576 per camera
-        """
-        height, width = pano_image.shape[:2]
-        camera_width = width // 5  # 576 pixels per camera (W)
-
-        fisheyes = []
-
-        for i in range(5):
-            # Extract each fisheye camera region
-            x_start = i * camera_width
-            x_end = (i + 1) * camera_width
-            fisheye = pano_image[:, x_start:x_end].copy()
-
-            # Rotate 90° clockwise
-            fisheye_rotated = cv2.rotate(fisheye, cv2.ROTATE_90_CLOCKWISE)
-
-            # Apply calibration (undistort using camera intrinsics)
-            cam_name = f'c{i}'
-            intrinsics = self.camera_intrinsics[cam_name]
-
-            # Camera matrix
-            camera_matrix = np.array([
-                [intrinsics['fx'], 0, intrinsics['cx']],
-                [0, intrinsics['fy'], intrinsics['cy']],
-                [0, 0, 1]
-            ], dtype=np.float32)
-
-            # Distortion coefficients
-            dist_coeffs = np.array([
-                intrinsics['k1'], intrinsics['k2'],
-                intrinsics['p1'], intrinsics['p2'], 0
-            ], dtype=np.float32)
-
-            # Undistort
-            h, w = fisheye_rotated.shape[:2]
-            new_camera_matrix, roi = cv2.getOptimalNewCameraMatrix(
-                camera_matrix, dist_coeffs, (w, h), 1, (w, h)
-            )
-
-            fisheye_calibrated = cv2.undistort(
-                fisheye_rotated, camera_matrix, dist_coeffs,
-                None, new_camera_matrix
-            )
-
-            # Crop to ROI
-            x, y, w, h = roi
-            if w > 0 and h > 0:
-                fisheye_calibrated = fisheye_calibrated[y:y+h, x:x+w]
-
-            fisheyes.append(fisheye_calibrated)
-
-        # Stitch fisheyes together horizontally
-        # Resize all to same height if needed
-        max_height = max(f.shape[0] for f in fisheyes)
-        fisheyes_resized = []
-        for f in fisheyes:
-            if f.shape[0] != max_height:
-                aspect = f.shape[1] / f.shape[0]
-                new_width = int(max_height * aspect)
-                f = cv2.resize(f, (new_width, max_height))
-            fisheyes_resized.append(f)
-
-        # Horizontal concatenation
-        stitched = np.hstack(fisheyes_resized)
-
-        return stitched
-
-    def publish_pano_parameters(self, response):
-        """Publish timestamp and extrinsics from image response"""
-        transform = TransformStamped()
-        transform.header.stamp = self.get_clock().now().to_msg()
-        transform.header.frame_id = "body"
-        transform.child_frame_id = "pano"
-
-        # Extract transform from response
-        snapshot = response.shot.transforms_snapshot
-
-        # Find pano transform
-        if 'pano' in snapshot.child_to_parent_edge_map:
-            pano_transform = snapshot.child_to_parent_edge_map['pano'].parent_tform_child
-
-            # Position
-            transform.transform.translation.x = pano_transform.position.x
-            transform.transform.translation.y = pano_transform.position.y
-            transform.transform.translation.z = pano_transform.position.z
-
-            # Rotation (quaternion)
-            transform.transform.rotation.x = pano_transform.rotation.x
-            transform.transform.rotation.y = pano_transform.rotation.y
-            transform.transform.rotation.z = pano_transform.rotation.z
-            transform.transform.rotation.w = pano_transform.rotation.w
-
-        self.pano_params_pub.publish(transform)
+            self.get_logger().error(f"Error in publish_callback: {e}")
 
 
 def main(args=None):
     rclpy.init(args=args)
 
+    # =================================================================
+    # CONFIGURATION - CHANGE THESE SETTINGS
+    # =================================================================
+
+    SOURCE = 'c2'              # Camera source: 'c0', 'c1', 'c2', 'c3', 'c4', 'pano', etc.
+    RESIZE_RATIO = 0.30        # 0.3 = 30% of original size (576x324 for fisheye)
+    QUALITY_PERCENT = 100      # JPEG quality 0-100 (only applies if image_format=1)
+    IMAGE_FORMAT = 2           # 1=JPEG, 2=RAW
+
+    # =================================================================
+
+    node = SpotCameraPublisher(
+        source=SOURCE,
+        resize_ratio=RESIZE_RATIO,
+        quality_percent=QUALITY_PERCENT,
+        image_format=IMAGE_FORMAT
+    )
+
     try:
-        # Create publisher with adjustable parameters
-        # Adjust these values as needed:
-        #   resize_ratio: 0.1-1.0 (lower = faster but lower quality)
-        #   quality_percent: 1-100 (only affects JPEG format)
-        #   image_format: 1=JPEG, 2=RAW
-        #   pixel_format: 3=RGB, 4=RGBA
-        node = SpotPanoPublisher(
-            resize_ratio=0.30,
-            quality_percent=100,
-            image_format=2,  # RAW
-            pixel_format=3   # RGB
-        )
         rclpy.spin(node)
     except KeyboardInterrupt:
         pass
-    finally:
-        if 'node' in locals():
-            node.destroy_node()
-        rclpy.shutdown()
+
+    node.destroy_node()
+    rclpy.shutdown()
 
 
 if __name__ == '__main__':

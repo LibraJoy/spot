@@ -1,12 +1,10 @@
 from bosdyn.client.image import build_image_request, ImageClient, image_pb2
 import bosdyn.client.spot_cam as spot_cam
 import bosdyn.client.util
-from spot_ros2.CameraService import CameraService
 import cv2
 import numpy as np
 import time
 import os
-
 
 bosdyn.client.util.setup_logging(False)
 sdk = bosdyn.client.create_standard_sdk('CerlabSpotSDK')
@@ -14,14 +12,14 @@ sdk = bosdyn.client.create_standard_sdk('CerlabSpotSDK')
 spot_cam.register_all_service_clients(sdk)
 
 robot = sdk.create_robot('10.0.0.3')
-robot.authenticate('user', 'scgau6g5w987')
+robot.authenticate()
 
-ptzCam = CameraService(robot)
 # print(robot.list_services())
 cam_image_client = robot.ensure_client("spot-cam-image")
 
 sources = cam_image_client.list_image_sources()
 print("Available sources:", [s.name for s in sources])
+
 
 # ----------------------------STREAM IMAGES-----------------------------
 
@@ -42,33 +40,23 @@ def show_single(source='pano', quality_percent=100, resize_ratio=0.30, image_for
 
     # First frame info
     print(f"\nCapturing {source}...")
-    # first_response = cam_image_client.get_image(request)
-    # first_img = first_response[0].shot.image
-    # print(f"Image format: {first_img.format} (1=JPEG, 2=RAW)")
-    # print(f"Pixel format: {first_img.pixel_format}")
-    # print(f"Resolution: {first_img.cols}x{first_img.rows}")
-    # print(f"Data size: {len(first_img.data):,} bytes\n")
     print("Press 'q' to quit\n")
-
-    root = f"images_{source}"
-    if not os.path.exists(root):
-        os.makedirs(root, exist_ok=True)
 
     while True:
         image_resposes = cam_image_client.get_image(request)
         img = image_resposes[0].shot.image
 
         # Convert to cv2 (pixel format is always 3 = RGB)
-        # if img.format == 2:  # RAW
-        #     cv_image = cv2.cvtColor(
-        #         np.frombuffer(img.data, dtype=np.uint8).reshape((img.rows, img.cols, 3)),
-        #         cv2.COLOR_RGB2BGR
-        #     )
-        # else:  # JPEG
-        #     cv_image = cv2.imdecode(np.frombuffer(img.data, dtype=np.uint8), cv2.IMREAD_COLOR)
+        if img.format == 2:  # RAW
+            cv_image = cv2.cvtColor(
+                np.frombuffer(img.data, dtype=np.uint8).reshape((img.rows, img.cols, 3)),
+                cv2.COLOR_RGB2BGR
+            )
+        else:  # JPEG
+            cv_image = cv2.imdecode(np.frombuffer(img.data, dtype=np.uint8), cv2.IMREAD_COLOR)
 
-        # # Show image
-        # cv2.imshow(source, cv_image)
+        # Show image
+        cv2.imshow(source, cv_image)
 
 
         frame_count += 1
@@ -76,12 +64,7 @@ def show_single(source='pano', quality_percent=100, resize_ratio=0.30, image_for
         # Print FPS every 20 frames 
         if frame_count % 30 == 0:
             print(f"Frame {frame_count}: {frame_count/(time.time()-start_time):.2f} FPS")
-        # if frame_count == 300:
-        #     break
         
-        # save an image every 30 frames
-        # if frame_count % 20 ==0:
-        #     cv2.imwrite(os.path.join(root, f"{source}_{frame_count}.png"), cv_image)
         # Quit on 'q'
         if cv2.waitKey(1) & 0xFF == ord('q'):
             break
@@ -95,19 +78,9 @@ def show_single(source='pano', quality_percent=100, resize_ratio=0.30, image_for
 
     return image_resposes
 
-
-# Main execution
 if __name__ == '__main__':
-    # Uncomment the function you want to run:
 
-    # Show 4 cameras in parallel
-    # lowering quality percent will increase FPS only fo JPEG format, not RAW
-    # pixel format: image_pb2.Image.PixelFormat https://dev.bostondynamics.com/protos/bosdyn/api/proto_reference.html#image-pixelformat
-    # pixel format 1 = GREY is not supported by the spot cam, it will return an error. 
-    # image_resposes = show_single(quality_percent=50, resize_ratio=0.30, image_format=2, pixel_format=3)
-
-    # Show single pano camera
-    image_resposes = show_single('c2', quality_percent=100, resize_ratio=0.30, image_format=2, pixel_format=3)
+    image_resposes = show_single('pano', quality_percent=60, resize_ratio=0.3, image_format=1, pixel_format=3)
 
     # Print last response metadata (excluding image data)
     if 'image_resposes' in locals() and len(image_resposes) > 0:
@@ -145,6 +118,3 @@ if __name__ == '__main__':
             else:
                 # It's a primitive type (int, string, etc.)
                 print(f"  {field_value}")
-
-
-# ----------------------------------------------STREAM IMAGES-----------------------------

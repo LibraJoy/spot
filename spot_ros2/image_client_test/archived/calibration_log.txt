@@ -1,0 +1,47 @@
+Processing 13 images...
+Looking for 23x14 checkerboard (rows x cols)
+======================================================================
+
+[1/13] c2_1710.png
+  ✗ Failed to find corners
+
+[2/13] c2_1260.png
+  ✗ Failed to find corners
+
+[3/13] c2_1890.png
+  ✗ Failed to find corners
+
+[4/13] c2_1140.png
+  ✗ Failed to find corners
+
+[5/13] c2_3030.png
+  ✗ Failed to find corners
+
+[6/13] c2_1560.png
+  ✗ Failed to find corners
+
+[7/13] c2_2760.png
+  ✗ Failed to find corners
+
+[8/13] c2_1410.png
+  ✗ Failed to find corners
+
+[9/13] c2_1590.png
+  ✓ Found all 322 corners
+
+[10/13] c2_1320.png
+  ✗ Failed to find corners
+
+[11/13] c2_1170.png
+  ✗ Failed to find corners
+
+[12/13] c2_2190.png
+  ✗ Failed to find corners
+
+[13/13] c2_1470.png
+  ✗ Failed to find corners
+
+======================================================================
+Successfully processed 1/13 images
+
+✗ ERROR: Need at least 3 valid images for calibration!

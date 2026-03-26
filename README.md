@@ -11,7 +11,7 @@ Before launching any ROS 2 nodes, ensure your machine is properly connected to S
 
 ---
 
-## 🤖 Core Nodes
+##  Core Nodes
 
 ### 1. Spot Base Node (`spot_base`)
 The `spot_base` node is the core driver that handles all bidirectional communication with the Spot API. It manages the robot's physical state, processes movement commands, and publishes sensory data (including Spot CAM images and odometry).

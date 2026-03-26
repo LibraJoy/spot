@@ -1,0 +1,177 @@
+# =============================================================================
+# ROS2 Package .gitignore
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# Python
+# -----------------------------------------------------------------------------
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg
+*.egg-info/
+dist/
+build/
+*.whl
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.hypothesis/
+
+# Virtual environments
+venv/
+env/
+ENV/
+.venv
+
+# Jupyter Notebook
+.ipynb_checkpoints
+*.ipynb
+
+# -----------------------------------------------------------------------------
+# ROS2
+# -----------------------------------------------------------------------------
+# Build artifacts (these are in workspace root, but just in case)
+build/
+install/
+log/
+
+# ROS bag files (can be large)
+*.bag
+*.db3
+*.db3-shm
+*.db3-wal
+
+# ROS2 parameter files (if auto-generated)
+*.yaml.bak
+
+# -----------------------------------------------------------------------------
+# Calibration Images (Large Files - image_client_test/)
+# -----------------------------------------------------------------------------
+# Calibration image folders (1.2GB total - too large for git)
+spot_ros2/image_client_test/images_c*/*
+spot_ros2/image_client_test/undistorted_output/images_undistorted_*/
+
+# Keep example images (for reference)
+!spot_ros2/image_client_test/images_c*/example_*.png
+
+# Reprojection analysis image folders (generated)
+spot_ros2/image_client_test/reprojection_analysis/*
+
+# Keep analysis plot PNGs (small)
+!spot_ros2/image_client_test/reprojection_analysis/*.png
+
+# Test images folder (sample outputs)
+!spot_ros2/image_client_test/test_images/
+
+# Archived metadata
+# spot_ros2/image_client_test/archived/
+
+# -----------------------------------------------------------------------------
+# IDE and Editors
+# -----------------------------------------------------------------------------
+# VSCode
+.vscode/
+*.code-workspace
+
+# PyCharm
+.idea/
+*.iml
+
+# Vim
+*.swp
+*.swo
+*~
+
+# Emacs
+*~
+\#*\#
+.\#*
+
+# Sublime Text
+*.sublime-project
+*.sublime-workspace
+
+# -----------------------------------------------------------------------------
+# OS Files
+# -----------------------------------------------------------------------------
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+
+# Linux
+*~
+.directory
+.Trash-*
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# -----------------------------------------------------------------------------
+# Temporary Files
+# -----------------------------------------------------------------------------
+*.tmp
+*.temp
+*.log
+*.bak
+*.swp
+*.orig
+
+# -----------------------------------------------------------------------------
+# Compressed Archives
+# -----------------------------------------------------------------------------
+*.tar
+*.tar.gz
+*.tgz
+*.zip
+*.7z
+*.rar
+
+# -----------------------------------------------------------------------------
+# Media Files (if accidentally added)
+# -----------------------------------------------------------------------------
+# Large video files
+*.mp4
+*.avi
+*.mov
+*.mkv
+
+# Large image files (keep calibration PNGs, exclude others)
+*.tif
+*.tiff
+*.psd
+
+# -----------------------------------------------------------------------------
+# Documentation Build Output
+# -----------------------------------------------------------------------------
+docs/_build/
+*.pdf
+
+# -----------------------------------------------------------------------------
+# Credentials and Secrets
+# -----------------------------------------------------------------------------
+# Never commit credentials!
+*password*
+*secret*
+*token*
+.env
+.env.*
+credentials.*
+auth.*
+
+# Exception: allow common config files that don't contain secrets
+!.env.example
+!.env.template
+
+# -----------------------------------------------------------------------------
+# Custom Excludes
+# -----------------------------------------------------------------------------
+# Add project-specific excludes here
