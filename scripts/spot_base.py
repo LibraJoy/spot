@@ -5,7 +5,8 @@ from sensor_msgs.msg import Image
 from vision_msgs.msg import Detection2DArray, Detection2D, ObjectHypothesisWithPose
 from cv_bridge import CvBridge, CvBridgeError
 from spot.msg import SemanticLabel
-from geometry_msgs.msg import PoseStamped
+from geometry_msgs.msg import PoseStamped, Twist
+from std_msgs.msg import String
 import spot.spot_spot as spot
 import spot.spot_move as spot_move
 import spot.spot_webrtc as spot_webrtc
@@ -97,6 +98,8 @@ class yolo_seg:
 
             # Show results to screen (in supported environments)
             r.show()
+
+# For check repeated path_msg
 
             # Save results to disk
             r.save(filename=f"results{i}.jpg")
@@ -245,6 +248,17 @@ class spotMoveBase:
         self.pose_pub = rospy.Publisher('/spot/pose', PoseStamped, queue_size=10)
         self.odom_pub = rospy.Publisher('/spot/odom', Odometry, queue_size=10)
         self.img_pub = rospy.Publisher('/spot_image', Image, queue_size=10)
+
+        # Teleop state — highest priority control
+        self.teleop_last_heartbeat = None
+        self.teleop_timeout = 2.0  # seconds before teleop considered inactive
+
+        rospy.Subscriber("/spot/cmd_vel", Twist, self.cmd_vel_callback)
+        rospy.Subscriber("/spot/teleop_active", Bool, self.teleop_active_callback)
+        rospy.Subscriber("/spot/sit", Bool, self.sit_callback)
+        rospy.Subscriber("/spot/stand", Bool, self.stand_callback)
+        rospy.Subscriber("/spot/body_pose", Twist, self.body_pose_callback)
+        self.teleop_feedback_pub = rospy.Publisher('/spot/teleop_feedback', String, queue_size=10)
 
         rospy.Timer(rospy.Duration(0.03), self.odom_pub_timer_callback)
         rospy.Timer(rospy.Duration(0.05), self.move_status_check_timer_callback)
@@ -403,12 +417,65 @@ class spotMoveBase:
         tf.transform.rotation.w = quaternion.w
         self.tf_broadcaster.sendTransform(tf)
 
+    def is_teleop_active(self):
+        if self.teleop_last_heartbeat is None:
+            return False
+        return (time.time() - self.teleop_last_heartbeat) < self.teleop_timeout
+
+    def teleop_active_callback(self, msg):
+        if msg.data:
+            self.teleop_last_heartbeat = time.time()
+
+    def cmd_vel_callback(self, msg):
+        if abs(msg.linear.x) < 0.001 and abs(msg.linear.y) < 0.001 and abs(msg.angular.z) < 0.001:
+            return  # don't send zero-velocity command — it causes stepping in place and overrides sit/stand
+        velocity_cmd = RobotCommandBuilder.synchro_velocity_command(
+            v_x=msg.linear.x,
+            v_y=msg.linear.y,
+            v_rot=msg.angular.z,
+            params=self.mobility_params
+        )
+        spot.robot_command_client.robot_command(
+            lease=None,
+            command=velocity_cmd,
+            end_time_secs=time.time() + 0.5
+        )
+
+    def sit_callback(self, msg):
+        if msg.data:
+            spot.sit()
+            self.teleop_feedback_pub.publish(String("Sit command executed"))
+
+    def stand_callback(self, msg):
+        if msg.data:
+            spot.stand()
+            self.teleop_feedback_pub.publish(String("Stand command executed"))
+
+    def body_pose_callback(self, msg):
+        body_pose_cmd = RobotCommandBuilder.synchro_stand_command(
+            body_height=msg.linear.z,
+            footprint_R_body=bosdyn.geometry.EulerZXY(
+                roll=msg.angular.x,
+                pitch=msg.angular.y,
+                yaw=msg.angular.z
+            )
+        )
+        spot.robot_command_client.robot_command(
+            lease=None,
+            command=body_pose_cmd,
+            end_time_secs=time.time() + 1.0
+        )
+
     def goal_pose_sub_callback(self, msg):
         self.goal_mode = "subscribe"
-        global robot_command_client 
+        global robot_command_client
         global robot_state_client
         frame_name = VISION_FRAME_NAME
-        
+
+        if self.is_teleop_active():
+            rospy.loginfo_throttle(2.0, "Teleop active — ignoring /spot/waypoint")
+            return
+
         # print("in goal pose sub callback")
         if self.goal[0] == msg.pose.position.x and self.goal[1] == msg.pose.position.y:
             rospy.loginfo("subscribed goal has not changed (x: %f, y: %f), do not upddate command", self.goal[0], self.goal[1])
@@ -444,10 +511,14 @@ class spotMoveBase:
 
     def goal_pose_click_callback(self, msg):
         self.goal_mode = "click"
-        global robot_command_client 
+        global robot_command_client
         global robot_state_client
         frame_name = VISION_FRAME_NAME
-        
+
+        if self.is_teleop_active():
+            rospy.loginfo_throttle(2.0, "Teleop active — ignoring /move_base_simple/goal")
+            return
+
         # print("in goal pose sub callback")
         if self.goal[0] == msg.pose.position.x and self.goal[1] == msg.pose.position.y:
             rospy.loginfo("subscribed goal has not changed, do not upddate command")
