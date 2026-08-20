@@ -55,6 +55,8 @@ KEY_RIGHT  = 'l'
 KEY_LEFT   = 'j'
 KEY_ESC    = '\x1b'
 KEY_CTRL_C = '\x03'
+KEY_SWITCH_OUT = 'c'
+KEY_SWITCH_BACK = 'v'
 
 MOVE_KEYS = {'w', 's', 'a', 'd', 'q', 'e'}
 
@@ -145,10 +147,10 @@ class SpotTeleopKeyboard:
 
         # ── timers ────────────────────────────────────────────────────active_keys
         rospy.Timer(rospy.Duration(0.1), self.publish_commands)   # 10 Hz
-        rospy.Timer(rospy.Duration(1.0), self.publish_heartbeat)  # 1 Hz
 
         self.running = True
-        rospy.loginfo("Spot Teleop Keyboard ready — ESC or Ctrl+C to exit")
+        # self.teleop_mode = True
+        # rospy.loginfo("Spot Teleop Keyboard ready — ESC or Ctrl+C to exit, c to switch out, v to switch back.")
 
     # ── velocity from active keys ─────────────────────────────────────
 
@@ -239,11 +241,25 @@ class SpotTeleopKeyboard:
         elif raw_key in (KEY_ESC, KEY_CTRL_C):
             rospy.loginfo("Exit key — shutting down teleop")
             self.running = False
+        
+        # ── switch ──────────────────────────────────────────────────────
+        # elif raw_key == KEY_SWITCH_OUT:
+        #     if self.teleop_mode:
+        #         self.teleop_mode = False
+        #         rospy.loginfo("Switched OUT of teleop mode — cmd_vel will no longer be published")
+        #     else:
+        #         rospy.loginfo("Already switched out of teleop mode")
+        # elif raw_key == KEY_SWITCH_BACK:
+        #     if not self.teleop_mode:
+        #         self.teleop_mode = True
+        #         rospy.loginfo("Switched BACK INTO teleop mode — cmd_vel will be published again")
+        #     else:
+        #         rospy.loginfo("Already in teleop mode")
 
     # ── publishers ────────────────────────────────────────────────────
 
     def publish_commands(self, event):
-        """10 Hz: publish cmd_vel only while moving or on the one stop frame."""
+        """10 Hz: publish cmd_vel while moving or on the one stop frame; track teleop_active state."""
         self._update_velocity()  # keep expiry running even when no key is typed
         is_moving = abs(self.vx) > 0.001 or abs(self.vy) > 0.001 or abs(self.vyaw) > 0.001
         if is_moving or self._was_moving:
@@ -252,6 +268,13 @@ class SpotTeleopKeyboard:
             twist.linear.y  = self.vy
             twist.angular.z = self.vyaw
             self.cmd_vel_pub.publish(twist)
+
+        # Publish True while keys are held (heartbeat); False on the first tick after release.
+        if is_moving:
+            self.teleop_active_pub.publish(Bool(True))
+        elif self._was_moving:
+            self.teleop_active_pub.publish(Bool(False))
+
         self._was_moving = is_moving
 
     def publish_body_pose(self):
@@ -261,9 +284,6 @@ class SpotTeleopKeyboard:
         twist.angular.y = self.body_pitch
         twist.angular.z = self.body_yaw
         self.body_pose_pub.publish(twist)
-
-    def publish_heartbeat(self, event):
-        self.teleop_active_pub.publish(Bool(True))
 
     # ── controls ─────────────────────────────────────────────────────
 
@@ -345,7 +365,7 @@ class SpotTeleopKeyboard:
 
         print(f"{B}KEYS:{E}")
         print(f"  {C}Move (combinable):{E} W/S Fwd/Back  A/D Strafe  Q/E Rotate")
-        print(f"  {C}Body:{E}              R/F Height  Arrows Pitch/Roll  ,/. Yaw  H Reset")
+        print(f"  {C}Body:{E}              R/F Height  IJKL Pitch/Roll  ,/. Yaw  H Reset")
         print(f"  {C}Action:{E}            Z Sit  X Stand  Space E-STOP  +/- Speed  ESC Exit")
         print(f"\n{B}{C}{'='*62}{E}")
         for _ in range(3):
@@ -356,6 +376,7 @@ class SpotTeleopKeyboard:
         self.active_keys.clear()
         self.vx = self.vy = self.vyaw = 0.0
         self.cmd_vel_pub.publish(Twist())
+        self.teleop_active_pub.publish(Bool(False))
 
 
 # ── entry point ───────────────────────────────────────────────────────

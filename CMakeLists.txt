@@ -177,7 +177,7 @@ catkin_install_python(PROGRAMS
   scripts/yolo_res_pub.py
   scripts/uav_yolo_res_pub.py
   scripts/repub_lidar_debug.py
-  scripts/yolov7.py
+  scripts/yolov7_sam2_node.py
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
 

@@ -41,7 +41,6 @@ import torch
 import os
 import random
 import threading
-from spot.yolo_sam2 import SAM2
 # yolo v8
 import PIL.Image
 import cv2
@@ -57,15 +56,14 @@ from cv_bridge import CvBridge, CvBridgeError
 from vision_msgs.msg import Detection2DArray, Detection2D, BoundingBox2D, ObjectHypothesisWithPose
 import tf2_ros
 
-# # Import the YOLOv7+SAM2 immediate detector
-# import sys
-# import os
-# sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-# import importlib.util
-# spec = importlib.util.spec_from_file_location("yolov7_detector", os.path.join(os.path.dirname(os.path.abspath(__file__)), "yolov7.py"))
-# yolov7_detector = importlib.util.module_from_spec(spec)
-# spec.loader.exec_module(yolov7_detector)
-# YOLOv7 = yolov7_detector.YOLOv7
+# Import the YOLOv7+SAM2 immediate detector by absolute path so the catkin
+# devel-space wrapper scripts can never shadow it
+import os
+import importlib.util
+spec = importlib.util.spec_from_file_location("yolov7_sam2_node", os.path.join(os.path.dirname(os.path.abspath(__file__)), "yolov7_sam2_node.py"))
+yolov7_sam2_node = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(yolov7_sam2_node)
+YOLOv7 = yolov7_sam2_node.YOLOv7SAM2ImmediateDetector
 
 class yolo_seg:
     def __init__(self):
@@ -234,10 +232,13 @@ class spotMoveBase:
         # goal mode flag
         self.goal_mode = "subscribe"
 
-        # detection model
-        self.detection_model = "yolov8"          # YOLOv8 only
-        # self.detection_model = "yolov7-sam2"     # YOLOv7+SAM2 only  
-        # self.detection_model = "v7+v8"             # Both YOLOv8 and YOLOv7+SAM2 simultaneously
+        # detection model: "yolov8" (YOLOv8-seg only), "yolov7-sam2"
+        # (YOLOv7+SAM2 only), or "v7+v8" (both simultaneously).
+        # Switch at launch time: rosrun spot spot_base.py _detection_model:=yolov8
+        self.detection_model = rospy.get_param("~detection_model", "yolov7-sam2")
+        if self.detection_model not in ("yolov8", "yolov7-sam2", "v7+v8"):
+            rospy.logwarn(f"Unknown detection_model '{self.detection_model}', falling back to yolov7-sam2")
+            self.detection_model = "yolov7-sam2"
 
         # ROS
         self.tf_broadcaster = tf2_ros.TransformBroadcaster()
@@ -249,9 +250,13 @@ class spotMoveBase:
         self.odom_pub = rospy.Publisher('/spot/odom', Odometry, queue_size=10)
         self.img_pub = rospy.Publisher('/spot_image', Image, queue_size=10)
 
-        # Teleop state — highest priority control
+        # Teleop state — highest priority control (human-in-the-loop takeover)
         self.teleop_last_heartbeat = None
         self.teleop_timeout = 2.0  # seconds before teleop considered inactive
+        self.teleop_was_active = False  # used to detect engage/release edges
+        # Latest waypoint received while teleop is active; replayed on release.
+        self.pending_goal_msg = None
+        self.pending_goal_mode = None
 
         rospy.Subscriber("/spot/cmd_vel", Twist, self.cmd_vel_callback)
         rospy.Subscriber("/spot/teleop_active", Bool, self.teleop_active_callback)
@@ -425,10 +430,16 @@ class spotMoveBase:
     def teleop_active_callback(self, msg):
         if msg.data:
             self.teleop_last_heartbeat = time.time()
+        else:
+            # Explicit release: drop heartbeat so is_teleop_active() returns False immediately
+            self.teleop_last_heartbeat = None
 
     def cmd_vel_callback(self, msg):
         if abs(msg.linear.x) < 0.001 and abs(msg.linear.y) < 0.001 and abs(msg.angular.z) < 0.001:
             return  # don't send zero-velocity command — it causes stepping in place and overrides sit/stand
+        # Refresh heartbeat only for non-zero velocity so the stop frame published
+        # on key release does not re-engage teleop after /spot/teleop_active False is sent.
+        self.teleop_last_heartbeat = time.time()
         velocity_cmd = RobotCommandBuilder.synchro_velocity_command(
             v_x=msg.linear.x,
             v_y=msg.linear.y,
@@ -467,90 +478,64 @@ class spotMoveBase:
         )
 
     def goal_pose_sub_callback(self, msg):
-        self.goal_mode = "subscribe"
-        global robot_command_client
-        global robot_state_client
-        frame_name = VISION_FRAME_NAME
-
         if self.is_teleop_active():
-            rospy.loginfo_throttle(2.0, "Teleop active — ignoring /spot/waypoint")
+            # Buffer the waypoint instead of dropping it; replay on teleop release.
+            rospy.loginfo_throttle(2.0, "Teleop active — buffering /spot/waypoint for after release")
+            self.pending_goal_msg = msg
+            self.pending_goal_mode = "subscribe"
             return
-
-        # print("in goal pose sub callback")
-        if self.goal[0] == msg.pose.position.x and self.goal[1] == msg.pose.position.y:
-            rospy.loginfo("subscribed goal has not changed (x: %f, y: %f), do not upddate command", self.goal[0], self.goal[1])
-            return
-        #  Check distance between current position and goal
-        self.goal = [msg.pose.position.x, msg.pose.position.y, 0]
-        [dx, dy, dyaw] = self.goal
-        current_heading, current_x, current_y, self.heading = self.get_desired_heading(dx, dy)
-        
-        if math.sqrt((current_x - self.goal[0])**2 + (current_y - self.goal[1])**2) < self.reach_tolerance:
-            rospy.loginfo("goal is too close to current position, skip move command")
-            return
-        
-        rospy.loginfo(f"waypoint: x: {self.goal[0]}, y: {self.goal[1]}")
-
-        dyaw = self.heading
-        if abs(current_heading - self.heading) < 0.2:
-            self.send_move_command()
-        else:
-            # rotation required when a new goal is received
-            self.rotate_flag = True
-            rotate_cmd = RobotCommandBuilder.synchro_se2_trajectory_point_command(
-                goal_x=current_x, goal_y=current_y, goal_heading=dyaw,
-                frame_name=frame_name, params=self.mobility_params)
-
-            # calculate rotate end time and send rotate cmd
-            rotate_end_time = 1.5*(abs(current_heading - self.heading)/self.v_ang)
-            rotate_end_time = min(10.0, rotate_end_time)
-            # print("rotate end time: ", rotate_end_time)
-            self.rotate_cmd_id = spot.robot_command_client.robot_command(lease=None, command=rotate_cmd,
-                                                        end_time_secs=time.time() + rotate_end_time)
-            print(f"rotation command request sent: {dyaw}")
+        # Live waypoint takes precedence over any stale buffered one.
+        self.pending_goal_msg = None
+        self.pending_goal_mode = None
+        self._process_goal_msg(msg, "subscribe")
 
     def goal_pose_click_callback(self, msg):
-        self.goal_mode = "click"
-        global robot_command_client
-        global robot_state_client
+        if self.is_teleop_active():
+            rospy.loginfo_throttle(2.0, "Teleop active — buffering /move_base_simple/goal for after release")
+            self.pending_goal_msg = msg
+            self.pending_goal_mode = "click"
+            return
+        self.pending_goal_msg = None
+        self.pending_goal_mode = None
+        self._process_goal_msg(msg, "click")
+
+    def _process_goal_msg(self, msg, mode):
+        """Shared goal handling for subscribe/click waypoint sources."""
+        self.goal_mode = mode
         frame_name = VISION_FRAME_NAME
 
-        if self.is_teleop_active():
-            rospy.loginfo_throttle(2.0, "Teleop active — ignoring /move_base_simple/goal")
+        if (self.goal is not None) and (self.goal[0] == msg.pose.position.x and self.goal[1] == msg.pose.position.y):
+            rospy.loginfo("subscribed goal has not changed (x: %f, y: %f), do not update command",
+                          self.goal[0], self.goal[1])
             return
 
-        # print("in goal pose sub callback")
-        if self.goal[0] == msg.pose.position.x and self.goal[1] == msg.pose.position.y:
-            rospy.loginfo("subscribed goal has not changed, do not upddate command")
-            return
-        #  Check distance between current position and goal
         self.goal = [msg.pose.position.x, msg.pose.position.y, 0]
         [dx, dy, dyaw] = self.goal
         current_heading, current_x, current_y, self.heading = self.get_desired_heading(dx, dy)
-        
+
         if math.sqrt((current_x - self.goal[0])**2 + (current_y - self.goal[1])**2) < self.reach_tolerance:
             rospy.loginfo("goal is too close to current position, skip move command")
             return
-        
-        rospy.loginfo(f"waypoint: x: {self.goal[0]}, y: {self.goal[1]}")
 
-        # send rotation command
+        rospy.loginfo(f"waypoint ({mode}): x: {self.goal[0]}, y: {self.goal[1]}")
+
         dyaw = self.heading
         if abs(current_heading - self.heading) < 0.2:
             self.send_move_command()
         else:
+            if mode == "click":
+                rospy.loginfo("yaw angle difference > 0.2, rotate before move.")
             self.rotate_flag = True
             rotate_cmd = RobotCommandBuilder.synchro_se2_trajectory_point_command(
                 goal_x=current_x, goal_y=current_y, goal_heading=dyaw,
                 frame_name=frame_name, params=self.mobility_params)
 
-            # calculate rotate end time and send rotate cmd
-            rotate_end_time = 1.5*(abs(current_heading - self.heading)/self.v_ang)
+            rotate_end_time = 1.5 * (abs(current_heading - self.heading) / self.v_ang)
             rotate_end_time = min(10.0, rotate_end_time)
-            self.rotate_cmd_id = spot.robot_command_client.robot_command(lease=None, command=rotate_cmd,
-                                                        end_time_secs=time.time() + rotate_end_time)
-            print("rotate end time: ", rotate_end_time)
-            print(f"rotation command request sent: {dyaw}")
+            self.rotate_cmd_id = spot.robot_command_client.robot_command(
+                lease=None, command=rotate_cmd,
+                end_time_secs=time.time() + rotate_end_time)
+            rospy.loginfo(f"rotation command request sent: {dyaw}")
 
     def send_move_command(self):
         global robot_command_client 
@@ -568,12 +553,69 @@ class spotMoveBase:
             end_time = 2.0 * (math.sqrt((dx - self.position[0])**2 + (dy - self.position[1])**2)/self.v_lin)
             end_time = min(20.0, end_time)
             end_time = max(4.0, end_time)
-            print(f"move end time: {end_time}")
+            rospy.loginfo(f"move end time: {end_time}")
             self.cmd_id = spot.robot_command_client.robot_command(lease=None, command=robot_cmd,
                                                         end_time_secs=time.time() + end_time)
-            print(f"movement command request sent: {self.goal}") 
+            rospy.loginfo(f"movement command request sent: {self.goal}") 
+        else:
+            rospy.loginfo("rotate flat is true. Do not execute move command")
+
+    def _handle_teleop_transitions(self):
+        """Detect teleop engage/release edges and react.
+
+        On engage: actively preempt any in-flight BD trajectory so the robot
+        does not keep chasing the old goal once the operator pauses cmd_vel,
+        and forget the trajectory cmd ids so the autonomy state machine stops.
+
+        On release: replay the latest waypoint received during teleop (if any)
+        so navigation can resume seamlessly.
+        """
+        teleop_now = self.is_teleop_active()
+
+        if teleop_now and not self.teleop_was_active:
+            # Just engaged — preempt autonomy.
+            if self.cmd_id is not None or self.rotate_cmd_id is not None:
+                try:
+                    stop_cmd = RobotCommandBuilder.stop_command()
+                    spot.robot_command_client.robot_command(
+                        lease=None, command=stop_cmd,
+                        end_time_secs=time.time() + 1.0)
+                    rospy.logwarn("Teleop engaged — preempted autonomous trajectory")
+                except Exception as exc:  # pylint: disable=broad-except
+                    rospy.logwarn(f"Failed to preempt trajectory on teleop engage: {exc}")
+            self.cmd_id = None
+            self.rotate_cmd_id = None
+            self.rotate_flapending_msgg = False
+            self.goal = None
+            self.rotate_flag = False
+
+        if (not teleop_now) and self.teleop_was_active:
+            # Just released — resume from buffered waypoint if we have one.
+            if self.pending_goal_msg is not None:
+                pending_msg = self.pending_goal_msg
+                pending_mode = self.pending_goal_mode
+                self.pending_goal_msg = None
+                self.pending_goal_mode = None
+                # Reset cached goal so the duplicate-check in _process_goal_msg
+                # does not reject this replay.
+                self.goal = [0., 0., 0.]
+                rospy.logwarn("Teleop released — resuming with buffered waypoint")
+                self._process_goal_msg(pending_msg, pending_mode)
+            else:
+                rospy.loginfo("Teleop released — waiting for next waypoint")
+
+        self.teleop_was_active = teleop_now
 
     def move_status_check_timer_callback(self, event):
+        # Always run transition logic so engage/release edges are handled even
+        # when there is no active cmd id.
+        self._handle_teleop_transitions()
+
+        # While teleop has control, do not advance the autonomy state machine
+        # (no feedback polling, no auto re-issuing of move commands).
+        if self.is_teleop_active():
+            return
+
         if not self.rotate_cmd_id and not self.cmd_id:
             # rospy.loginfo("no rotation and movement commands, skip move status check")
             return

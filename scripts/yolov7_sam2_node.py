@@ -20,13 +20,25 @@ import sam2
 from sam2.build_sam import build_sam2
 from sam2.sam2_image_predictor import SAM2ImagePredictor
 
+# pip package "yolov7detect" (module name "yolov7"); this file must NOT be
+# named yolov7.py or the import below resolves to the file itself
 import yolov7
+if not hasattr(yolov7, "load"):
+    raise ImportError(
+        f"'import yolov7' resolved to {yolov7.__file__} instead of the pip "
+        "yolov7detect package - remove the shadowing file from sys.path")
 
 
 class YOLOv7SAM2ImmediateDetector:
-    def __init__(self):
+    def __init__(self, detection_model="yolov7-sam2"):
         rospy.loginfo("Initializing YOLOv7+SAM2 Immediate Detector (No Synchronization)...")
-        
+
+        # "yolov7-sam2": sole detector on /yolo/detection
+        # "v7+v8": runs alongside YOLOv8, sharing /yolo/detection (results are
+        # distinguished downstream by header.frame_id)
+        self.detection_model = detection_model
+        rospy.loginfo(f"YOLOv7+SAM2 detector mode: {self.detection_model}")
+
         self.w_org = 1280
         self.h_org = 720
         self.bridge = CvBridge()
@@ -54,7 +66,7 @@ class YOLOv7SAM2ImmediateDetector:
         self.img_sub = rospy.Subscriber('/spot_image', Image, self.image_callback, queue_size=1)
         
         # Publishers - IMMEDIATE publication, no synchronization
-        self.yolo_detect_pub = rospy.Publisher('/yolo/detection', Detection2DArray, queue_size=10)
+        self.yolo_detect_pub = rospy.Publisher('/yolov7_sam2/detection', Detection2DArray, queue_size=10)
         self.yolo_vis_pub = rospy.Publisher('/yolov7_sam2/visualization', Image, queue_size=10)
         self.yolo_mask_pub = rospy.Publisher('/yolov7_sam2/mask', Image, queue_size=10)
         
